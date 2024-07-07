@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/base64"
 	"fmt"
+	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
 	"net/url"
@@ -11,6 +12,15 @@ import (
 )
 
 var urlStore = make(map[string]string)
+
+func ShortenerRouter() chi.Router {
+	r := chi.NewRouter()
+
+	r.Post("/", Encode)
+	r.Get("/{id}", Decode)
+
+	return r
+}
 
 func Encode(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -54,8 +64,7 @@ func Decode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	idRaw := r.URL.Path[1:]
-	id := strings.Split(idRaw, "/")[0]
+	id := chi.URLParam(r, "id")
 
 	if id == "" {
 		w.WriteHeader(http.StatusBadRequest)

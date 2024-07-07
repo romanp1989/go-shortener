@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"context"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -107,10 +109,13 @@ func TestDecode(t *testing.T) {
 			if tt.want.responseURL != "" {
 				urlStore[hashID] = tt.want.responseURL
 			}
-			body := httptest.NewRequest(http.MethodGet, "/"+hashID, nil)
+			body := httptest.NewRequest(http.MethodGet, "/{id}", nil)
 			w := httptest.NewRecorder()
 
-			Decode(w, body)
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("id", hashID)
+			r := body.WithContext(context.WithValue(body.Context(), chi.RouteCtxKey, rctx))
+			Decode(w, r)
 
 			result := w.Result()
 

@@ -6,11 +6,11 @@ import (
 )
 
 func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", http.HandlerFunc(handlers.Encode))
-	mux.HandleFunc("/{id}", http.HandlerFunc(handlers.Decode))
+	//mux := http.NewServeMux()
+	//mux.HandleFunc("/", http.HandlerFunc(handlers.Encode))
+	//mux.HandleFunc("/{id}", http.HandlerFunc(handlers.Decode))
 
-	err := http.ListenAndServe(":8080", mux)
+	err := http.ListenAndServe(":8080", handlers.ShortenerRouter())
 	if err != nil {
 		panic(err)
 	}
