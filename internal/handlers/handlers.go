@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/romanp1989/go-shortener/internal/config"
 	"io"
 	"net/http"
 	"net/url"
@@ -44,8 +45,9 @@ func Encode(w http.ResponseWriter, r *http.Request) {
 
 	urlStore[hashID] = stringURI
 
-	resp := fmt.Sprintf("http://%s/%s", r.Host, hashID)
+	resp := fmt.Sprintf("%s/%s", config.Options.FlagShortURL, hashID)
 
+	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(resp))
 }

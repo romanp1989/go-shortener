@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"github.com/go-chi/chi/v5"
+	"github.com/romanp1989/go-shortener/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -30,7 +31,7 @@ func TestEncode(t *testing.T) {
 			requestBody: "https://ya.ru",
 			want: want{
 				statusCode:  http.StatusCreated,
-				responseURL: "http://example.com/6YGS4ZUF",
+				responseURL: "http://localhost:8080/6YGS4ZUF",
 			},
 		},
 		{
@@ -52,6 +53,8 @@ func TestEncode(t *testing.T) {
 			},
 		},
 	}
+
+	config.ParseFlags()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
