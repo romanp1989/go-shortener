@@ -26,7 +26,7 @@ func TestEncode(t *testing.T) {
 		want        want
 	}{
 		{
-			name:        "Valid URL",
+			name:        "Valid_URL",
 			method:      http.MethodPost,
 			requestBody: "https://ya.ru",
 			want: want{
@@ -35,7 +35,7 @@ func TestEncode(t *testing.T) {
 			},
 		},
 		{
-			name:        "Empty URL",
+			name:        "Empty_URL",
 			method:      http.MethodPost,
 			requestBody: "",
 			want: want{
@@ -44,7 +44,7 @@ func TestEncode(t *testing.T) {
 			},
 		},
 		{
-			name:        "Wrong request type",
+			name:        "Wrong_request_type",
 			method:      http.MethodPut,
 			requestBody: "",
 			want: want{
@@ -73,9 +73,9 @@ func TestEncode(t *testing.T) {
 
 			require.NoError(t, err)
 
-			assert.Equal(t, tt.want.responseURL, string(resBody))
+			assert.Equal(t, tt.want.responseURL, string(resBody), "Ожидаемый URL %s не совпадает с фактическим %s", tt.want.responseURL, string(resBody))
 
-			assert.Equal(t, tt.want.statusCode, result.StatusCode)
+			assert.Equal(t, tt.want.statusCode, result.StatusCode, "Ожидаемый код ответа %s не совпадаем с фактических %s", tt.want.statusCode, result.StatusCode)
 
 		})
 	}
@@ -92,16 +92,16 @@ func TestDecode(t *testing.T) {
 		want want
 	}{
 		{
-			name: "Success redirect",
+			name: "Success_redirect",
 			want: want{
 				statusCode:  http.StatusTemporaryRedirect,
 				responseURL: "https://ya.ru",
 			},
 		},
 		{
-			name: "Fail redirect",
+			name: "Fail_redirect",
 			want: want{
-				statusCode:  http.StatusBadRequest,
+				statusCode:  http.StatusNotFound,
 				responseURL: "",
 			},
 		},
@@ -124,11 +124,11 @@ func TestDecode(t *testing.T) {
 
 			defer result.Body.Close()
 
-			assert.Equal(t, tt.want.statusCode, result.StatusCode)
+			assert.Equal(t, tt.want.statusCode, result.StatusCode, "Ожидаемый код ответа %s не совпадаем с фактических %s", tt.want.statusCode, result.StatusCode)
 
 			if tt.want.responseURL != "" {
 				url := w.Header().Get("Location")
-				assert.Equal(t, tt.want.responseURL, url)
+				assert.Equal(t, tt.want.responseURL, url, "Ожидаемый URL %s не совпадает с фактическим %s", tt.want.responseURL, url)
 			}
 
 		})

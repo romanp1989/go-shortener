@@ -16,7 +16,7 @@ type ConfigENV struct {
 	BaseURL       string `env:"BASE_URL"`
 }
 
-func ParseFlags() {
+func ParseFlags() error {
 	flag.StringVar(&Options.FlagRunPort, "a", ":8080", "port to run server")
 	flag.StringVar(&Options.FlagShortURL, "b", "http://localhost:8080", "address to run server")
 	flag.Parse()
@@ -25,7 +25,8 @@ func ParseFlags() {
 
 	err := env.Parse(&cfg)
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Ошибка при парсинге переменных окружения %s", err.Error())
+		return err
 	}
 
 	if cfg.ServerAddress != "" {
@@ -36,4 +37,5 @@ func ParseFlags() {
 		Options.FlagShortURL = cfg.BaseURL
 	}
 
+	return nil
 }

@@ -28,6 +28,7 @@ func Encode(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Некорректный тип запроса", http.StatusBadRequest)
 	}
 
+	defer r.Body.Close()
 	body, err := io.ReadAll(r.Body)
 	if err != nil || string(body) == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -78,5 +79,5 @@ func Decode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Error(w, "Не найден url для указанного ID", http.StatusBadRequest)
+	http.Error(w, "Не найден url для указанного ID", http.StatusNotFound)
 }
