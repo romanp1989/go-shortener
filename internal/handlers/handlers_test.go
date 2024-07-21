@@ -64,7 +64,8 @@ func TestEncode(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			Encode(w, r)
+			fn := Encode()
+			fn(w, r)
 
 			result := w.Result()
 
@@ -118,7 +119,8 @@ func TestDecode(t *testing.T) {
 			rctx := chi.NewRouteContext()
 			rctx.URLParams.Add("id", hashID)
 			r := body.WithContext(context.WithValue(body.Context(), chi.RouteCtxKey, rctx))
-			Decode(w, r)
+			fn := Decode()
+			fn(w, r)
 
 			result := w.Result()
 
