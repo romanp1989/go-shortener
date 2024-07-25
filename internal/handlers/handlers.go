@@ -3,10 +3,13 @@ package handlers
 import (
 	"crypto/md5"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/romanp1989/go-shortener/internal/config"
 	"github.com/romanp1989/go-shortener/internal/logger"
+	"github.com/romanp1989/go-shortener/internal/models"
+	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"net/url"
@@ -20,6 +23,7 @@ func ShortenerRouter() chi.Router {
 
 	r.Post("/", logger.WithLogging(Encode()))
 	r.Get("/{id}", logger.WithLogging(Decode()))
+	r.Post("/api/shorten", logger.WithLogging(Shorten()))
 
 	return r
 }
@@ -87,5 +91,42 @@ func Decode() http.HandlerFunc {
 
 		http.Error(w, "Не найден url для указанного ID", http.StatusNotFound)
 	}
+	return http.HandlerFunc(fn)
+}
+
+func Shorten() http.HandlerFunc {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		logger.Log.Debug("decoding request")
+
+		var req models.ShortenRequest
+		dec := json.NewDecoder(r.Body)
+		if err := dec.Decode(&req); err != nil {
+			logger.Log.Debug("cannot decode request JSON body", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		hashID := shortURL(req.URL)
+
+		urlStore[hashID] = req.URL
+
+		resp := fmt.Sprintf("%s/%s", config.Options.FlagShortURL, hashID)
+
+		shortenResponse := models.ShortenResponse{
+			Result: resp,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+
+		enc := json.NewEncoder(w)
+		if err := enc.Encode(shortenResponse); err != nil {
+			logger.Log.Debug("error encoding response", zap.Error(err))
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		logger.Log.Debug("sending HTTP 200 response")
+	}
+
 	return http.HandlerFunc(fn)
 }

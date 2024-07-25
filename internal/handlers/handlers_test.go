@@ -136,3 +136,52 @@ func TestDecode(t *testing.T) {
 		})
 	}
 }
+
+func TestShorten(t *testing.T) {
+	type want struct {
+		statusCode  int
+		responseURL string
+	}
+
+	var tests = []struct {
+		name        string
+		method      string
+		requestBody string
+		want        want
+	}{
+		{
+			name:        "Valid_URL",
+			method:      http.MethodPost,
+			requestBody: `{"url": "https://ya.ru"}`,
+			want: want{
+				statusCode:  http.StatusCreated,
+				responseURL: `{"result":"http://localhost:8080/6YGS4ZUF"}`,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body := strings.NewReader(tt.requestBody)
+			r := httptest.NewRequest(tt.method, "/", body)
+			r.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+
+			fn := Shorten()
+			fn(w, r)
+
+			result := w.Result()
+
+			resBody, err := io.ReadAll(result.Body)
+			defer result.Body.Close()
+
+			require.NoError(t, err)
+
+			assert.JSONEq(t, tt.want.responseURL, w.Body.String(), "Ожидаемый URL %s не совпадает с фактическим %s", tt.want.responseURL, string(resBody))
+
+			assert.Equal(t, tt.want.statusCode, w.Code, "Ожидаемый код ответа %s не совпадаем с фактических %s", tt.want.statusCode, result.StatusCode)
+
+		})
+	}
+}
