@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"github.com/go-chi/chi/v5"
+	"github.com/romanp1989/go-shortener/internal/compress"
 	"github.com/romanp1989/go-shortener/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -64,7 +67,8 @@ func TestEncode(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			Encode(w, r)
+			fn := Encode()
+			fn(w, r)
 
 			result := w.Result()
 
@@ -118,7 +122,8 @@ func TestDecode(t *testing.T) {
 			rctx := chi.NewRouteContext()
 			rctx.URLParams.Add("id", hashID)
 			r := body.WithContext(context.WithValue(body.Context(), chi.RouteCtxKey, rctx))
-			Decode(w, r)
+			fn := Decode()
+			fn(w, r)
 
 			result := w.Result()
 
@@ -133,4 +138,110 @@ func TestDecode(t *testing.T) {
 
 		})
 	}
+}
+
+func TestShorten(t *testing.T) {
+	type want struct {
+		statusCode  int
+		responseURL string
+	}
+
+	var tests = []struct {
+		name        string
+		method      string
+		requestBody string
+		want        want
+	}{
+		{
+			name:        "Valid_URL",
+			method:      http.MethodPost,
+			requestBody: `{"url": "https://ya.ru"}`,
+			want: want{
+				statusCode:  http.StatusCreated,
+				responseURL: `{"result":"http://localhost:8080/6YGS4ZUF"}`,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body := strings.NewReader(tt.requestBody)
+			r := httptest.NewRequest(tt.method, "/", body)
+			r.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+
+			fn := Shorten()
+			fn(w, r)
+
+			result := w.Result()
+
+			resBody, err := io.ReadAll(result.Body)
+			defer result.Body.Close()
+
+			require.NoError(t, err)
+
+			assert.JSONEq(t, tt.want.responseURL, w.Body.String(), "Ожидаемый URL %s не совпадает с фактическим %s", tt.want.responseURL, string(resBody))
+
+			assert.Equal(t, tt.want.statusCode, w.Code, "Ожидаемый код ответа %s не совпадаем с фактических %s", tt.want.statusCode, result.StatusCode)
+
+		})
+	}
+}
+
+func TestGzipCompression(t *testing.T) {
+	handler := http.HandlerFunc(compress.GzipMiddleware(Encode()))
+
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	requestBody := `https://ya.ru`
+
+	// ожидаемое содержимое тела ответа при успешном запросе
+	successBody := `http://localhost:8080/6YGS4ZUF`
+
+	t.Run("sends_gzip", func(t *testing.T) {
+		buf := bytes.NewBuffer(nil)
+		zb := gzip.NewWriter(buf)
+		_, err := zb.Write([]byte(requestBody))
+		require.NoError(t, err)
+		err = zb.Close()
+		require.NoError(t, err)
+
+		r := httptest.NewRequest("POST", srv.URL, buf)
+		r.RequestURI = ""
+		r.Header.Set("Content-Encoding", "gzip")
+		r.Header.Set("Accept-Encoding", "")
+
+		resp, err := http.DefaultClient.Do(r)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+		defer resp.Body.Close()
+
+		b, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.Equal(t, successBody, string(b))
+	})
+
+	t.Run("accepts_gzip", func(t *testing.T) {
+		buf := bytes.NewBufferString(requestBody)
+		r := httptest.NewRequest("POST", srv.URL, buf)
+		r.RequestURI = ""
+		r.Header.Set("Accept-Encoding", "gzip")
+
+		resp, err := http.DefaultClient.Do(r)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+		defer resp.Body.Close()
+
+		zr, err := gzip.NewReader(resp.Body)
+		require.NoError(t, err)
+
+		b, err := io.ReadAll(zr)
+		require.NoError(t, err)
+
+		require.Equal(t, successBody, string(b))
+	})
 }
