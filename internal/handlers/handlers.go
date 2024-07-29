@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/romanp1989/go-shortener/internal/compress"
 	"github.com/romanp1989/go-shortener/internal/config"
 	"github.com/romanp1989/go-shortener/internal/logger"
 	"github.com/romanp1989/go-shortener/internal/models"
@@ -21,9 +22,9 @@ var urlStore = make(map[string]string)
 func ShortenerRouter() chi.Router {
 	r := chi.NewRouter()
 
-	r.Post("/", logger.WithLogging(Encode()))
+	r.Post("/", logger.WithLogging(compress.GzipMiddleware(Encode())))
 	r.Get("/{id}", logger.WithLogging(Decode()))
-	r.Post("/api/shorten", logger.WithLogging(Shorten()))
+	r.Post("/api/shorten", logger.WithLogging(compress.GzipMiddleware(Shorten())))
 
 	return r
 }
