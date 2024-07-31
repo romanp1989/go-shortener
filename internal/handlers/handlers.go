@@ -6,31 +6,36 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/romanp1989/go-shortener/internal/compress"
 	"github.com/romanp1989/go-shortener/internal/config"
 	"github.com/romanp1989/go-shortener/internal/logger"
 	"github.com/romanp1989/go-shortener/internal/models"
+	"github.com/romanp1989/go-shortener/internal/storage"
 	"go.uber.org/zap"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
 )
 
-var urlStore = make(map[string]string)
-
-func ShortenerRouter() chi.Router {
-	r := chi.NewRouter()
-
-	r.Post("/", logger.WithLogging(compress.GzipMiddleware(Encode())))
-	r.Get("/{id}", logger.WithLogging(Decode()))
-	r.Post("/api/shorten", logger.WithLogging(compress.GzipMiddleware(Shorten())))
-
-	return r
+type Handlers struct {
+	storage *storage.Storage
 }
 
-func Encode() http.HandlerFunc {
+var urlStore = make(map[string]string)
+
+func New(storage *storage.Storage) Handlers {
+	return Handlers{
+		storage: storage,
+	}
+}
+
+func (h *Handlers) Encode() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
+		var (
+			hashID string
+		)
+
 		if r.Method != http.MethodPost {
 			http.Error(w, "Некорректный тип запроса", http.StatusBadRequest)
 		}
@@ -49,9 +54,13 @@ func Encode() http.HandlerFunc {
 			return
 		}
 
-		hashID := shortURL(stringURI)
-
-		urlStore[hashID] = stringURI
+		if hashID = h.storage.GetURL(stringURI); hashID == "" {
+			hashID = shortURL(stringURI)
+			err := h.storage.SaveURL(hashID, stringURI)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
 
 		resp := fmt.Sprintf("%s/%s", config.Options.FlagShortURL, hashID)
 
@@ -71,7 +80,7 @@ func shortURL(url string) string {
 	return encoded
 }
 
-func Decode() http.HandlerFunc {
+func (h *Handlers) Decode() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Некорректный тип запроса", http.StatusBadRequest)
@@ -85,7 +94,7 @@ func Decode() http.HandlerFunc {
 			return
 		}
 
-		if fullURL, ok := urlStore[id]; ok {
+		if fullURL := h.storage.GetURL(id); fullURL != "" {
 			http.Redirect(w, r, fullURL, http.StatusTemporaryRedirect)
 			return
 		}
@@ -95,8 +104,10 @@ func Decode() http.HandlerFunc {
 	return http.HandlerFunc(fn)
 }
 
-func Shorten() http.HandlerFunc {
+func (h *Handlers) Shorten() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
+		var hashID string
+
 		logger.Log.Debug("decoding request")
 
 		var req models.ShortenRequest
@@ -107,9 +118,13 @@ func Shorten() http.HandlerFunc {
 			return
 		}
 
-		hashID := shortURL(req.URL)
-
-		urlStore[hashID] = req.URL
+		if hashID = h.storage.GetURL(req.URL); hashID == "" {
+			hashID = shortURL(req.URL)
+			err := h.storage.SaveURL(hashID, req.URL)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
 
 		resp := fmt.Sprintf("%s/%s", config.Options.FlagShortURL, hashID)
 

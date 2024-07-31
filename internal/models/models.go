@@ -7,3 +7,13 @@ type ShortenRequest struct {
 type ShortenResponse struct {
 	Result string `json:"result"`
 }
+
+type StorageURL struct {
+	OriginalURL string `json:"original_url"`
+	ShortURL    string `json:"short_url"`
+}
+
+type Storage interface {
+	Save(OriginalURL string, ShortURL string) error
+	Get(inputURL string) string
+}

@@ -54,8 +54,8 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.responseData.status = statusCode // захватываем код статуса
 }
 
-func WithLogging(h http.HandlerFunc) http.HandlerFunc {
-	logFn := func(w http.ResponseWriter, r *http.Request) {
+func WithLogging(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
 		responseData := &responseData{
@@ -79,8 +79,5 @@ func WithLogging(h http.HandlerFunc) http.HandlerFunc {
 			zap.Duration("duration", duration),
 			zap.Int("size", responseData.size), // получаем перехваченный размер ответа
 		)
-	}
-
-	//Возвращаем расширенный handler
-	return http.HandlerFunc(logFn)
+	})
 }

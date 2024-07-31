@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/romanp1989/go-shortener/internal/compress"
 	"github.com/romanp1989/go-shortener/internal/config"
+	"github.com/romanp1989/go-shortener/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -56,8 +57,9 @@ func TestEncode(t *testing.T) {
 			},
 		},
 	}
-
 	config.ParseFlags()
+	s := storage.Init(config.Options.FlagFileStorage)
+	h := New(s)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -67,7 +69,7 @@ func TestEncode(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			fn := Encode()
+			fn := h.Encode()
 			fn(w, r)
 
 			result := w.Result()
@@ -110,11 +112,15 @@ func TestDecode(t *testing.T) {
 			},
 		},
 	}
+
+	s := storage.Init("")
+	h := New(s)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			hashID := shortURL(tt.want.responseURL)
 			if tt.want.responseURL != "" {
-				urlStore[hashID] = tt.want.responseURL
+				s.SaveURL(tt.want.responseURL, hashID)
 			}
 			body := httptest.NewRequest(http.MethodGet, "/{id}", nil)
 			w := httptest.NewRecorder()
@@ -122,7 +128,7 @@ func TestDecode(t *testing.T) {
 			rctx := chi.NewRouteContext()
 			rctx.URLParams.Add("id", hashID)
 			r := body.WithContext(context.WithValue(body.Context(), chi.RouteCtxKey, rctx))
-			fn := Decode()
+			fn := h.Decode()
 			fn(w, r)
 
 			result := w.Result()
@@ -163,6 +169,10 @@ func TestShorten(t *testing.T) {
 		},
 	}
 
+	config.ParseFlags()
+	s := storage.Init(config.Options.FlagFileStorage)
+	h := New(s)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			body := strings.NewReader(tt.requestBody)
@@ -171,7 +181,7 @@ func TestShorten(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			fn := Shorten()
+			fn := h.Shorten()
 			fn(w, r)
 
 			result := w.Result()
@@ -190,7 +200,11 @@ func TestShorten(t *testing.T) {
 }
 
 func TestGzipCompression(t *testing.T) {
-	handler := http.HandlerFunc(compress.GzipMiddleware(Encode()))
+	config.ParseFlags()
+	s := storage.Init(config.Options.FlagFileStorage)
+	h := New(s)
+
+	handler := compress.GzipMiddleware(h.Encode())
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
