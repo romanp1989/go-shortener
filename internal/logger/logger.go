@@ -58,6 +58,11 @@ func WithLogging(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
+		Log.Info("Request info",
+			zap.String("uri", r.RequestURI),
+			zap.String("method", r.Method),
+		)
+
 		responseData := &responseData{
 			status: 0,
 			size:   0,
@@ -72,9 +77,7 @@ func WithLogging(h http.Handler) http.Handler {
 
 		duration := time.Since(start)
 
-		Log.Info("Request info",
-			zap.String("uri", r.RequestURI),
-			zap.String("method", r.Method),
+		Log.Info("Response info",
 			zap.Int("status", responseData.status), // получаем перехваченный код статуса ответа
 			zap.Duration("duration", duration),
 			zap.Int("size", responseData.size), // получаем перехваченный размер ответа

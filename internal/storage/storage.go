@@ -1,6 +1,9 @@
 package storage
 
-import "github.com/romanp1989/go-shortener/internal/models"
+import (
+	"github.com/romanp1989/go-shortener/internal/models"
+	"log"
+)
 
 type Storage struct {
 	storage models.Storage
@@ -8,13 +11,21 @@ type Storage struct {
 
 func Init(path string) *Storage {
 	if path == "" {
-		return &Storage{storage: NewCacheStorage()}
+		storage := NewCacheStorage()
+		return &Storage{storage: storage}
 	}
-	return &Storage{storage: NewFileStorage(path)}
+
+	storage, err := NewFileStorage(path)
+	if err != nil {
+		log.Fatalf("Ошибка: %s", err)
+	}
+
+	return &Storage{storage: storage}
 }
 
-func (s *Storage) GetURL(inputURL string) string {
-	return s.storage.Get(inputURL)
+func (s *Storage) GetURL(inputURL string) (string, error) {
+	url, err := s.storage.Get(inputURL)
+	return url, err
 }
 
 func (s *Storage) SaveURL(originalURL string, shortURL string) error {

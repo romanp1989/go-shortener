@@ -47,15 +47,6 @@ func TestEncode(t *testing.T) {
 				responseURL: "",
 			},
 		},
-		{
-			name:        "Wrong_request_type",
-			method:      http.MethodPut,
-			requestBody: "",
-			want: want{
-				statusCode:  http.StatusBadRequest,
-				responseURL: "Некорректный тип запроса\n",
-			},
-		},
 	}
 	config.ParseFlags()
 	s := storage.Init(config.Options.FlagFileStorage)

@@ -8,11 +8,11 @@ func NewCacheStorage() *CacheStorage {
 	return &CacheStorage{storageURL: make(map[string]string)}
 }
 
-func (c *CacheStorage) Get(inputURL string) string {
+func (c *CacheStorage) Get(inputURL string) (string, error) {
 	if foundurl, ok := c.storageURL[inputURL]; ok {
-		return foundurl
+		return foundurl, nil
 	}
-	return ""
+	return "", nil
 }
 
 func (c *CacheStorage) Save(originalURL string, shortURL string) error {

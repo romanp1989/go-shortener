@@ -40,7 +40,7 @@ func (c *compressWriter) Close() error {
 
 type compressReader struct {
 	r  io.ReadCloser
-	zr *gzip.Reader ``
+	zr *gzip.Reader
 }
 
 func newCompressReader(r io.ReadCloser) (*compressReader, error) {

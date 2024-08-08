@@ -14,20 +14,17 @@ type FileStorage struct {
 	FileStoragePath string
 }
 
-func NewFileStorage(path string) *FileStorage {
+func NewFileStorage(path string) (*FileStorage, error) {
 	dir := filepath.Dir(path)
 
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err = os.Mkdir(dir, 0755)
 		if err != nil {
-			log.Fatalf("Ошибка: %s", err)
-			return nil
+			return &FileStorage{}, err
 		}
 	}
 
-	return &FileStorage{
-		FileStoragePath: path,
-	}
+	return &FileStorage{FileStoragePath: path}, nil
 }
 
 func (s *FileStorage) Save(originalURL string, shortURL string) error {
@@ -35,8 +32,8 @@ func (s *FileStorage) Save(originalURL string, shortURL string) error {
 
 	file, err := os.OpenFile(s.FileStoragePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		log.Fatalf("Ошибка при открытии: %s", err)
-		return nil
+		log.Printf("Ошибка при открытии: %s", err)
+		return err
 	}
 
 	defer file.Close()
@@ -47,14 +44,14 @@ func (s *FileStorage) Save(originalURL string, shortURL string) error {
 	return encoder.Encode(urlStorage)
 }
 
-func (s *FileStorage) Get(inputURL string) string {
+func (s *FileStorage) Get(inputURL string) (string, error) {
 	var (
 		read       [][]byte
 		storageURL []models.StorageURL
 	)
 	file, err := os.OpenFile(s.FileStoragePath, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
-		log.Fatalf("Ошибка при открытии: %s", err)
+		return "", err
 	}
 
 	defer file.Close()
@@ -78,19 +75,15 @@ func (s *FileStorage) Get(inputURL string) string {
 		}
 	}
 
+	// Поиск соотвествия полученного url сокращенному или полному url в хранилище, в зависимости от типа запроса.
+	// Для POST запросов ищем по OriginalURL, для GET - ShortURL
 	for _, ur := range storageURL {
 		if ur.ShortURL == inputURL {
-			url := ur.OriginalURL
-			return url
+			return ur.OriginalURL, nil
+		} else if ur.OriginalURL == inputURL {
+			return ur.ShortURL, nil
 		}
 	}
 
-	for _, ur := range storageURL {
-		if ur.OriginalURL == inputURL {
-			url := ur.ShortURL
-			return url
-		}
-	}
-
-	return ""
+	return "", nil
 }

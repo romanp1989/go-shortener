@@ -15,5 +15,5 @@ type StorageURL struct {
 
 type Storage interface {
 	Save(OriginalURL string, ShortURL string) error
-	Get(inputURL string) string
+	Get(inputURL string) (string, error)
 }

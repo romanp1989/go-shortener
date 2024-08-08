@@ -32,15 +32,8 @@ func New(storage *storage.Storage) Handlers {
 
 func (h *Handlers) Encode() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		var (
-			hashID string
-		)
-
-		if r.Method != http.MethodPost {
-			http.Error(w, "Некорректный тип запроса", http.StatusBadRequest)
-		}
-
 		defer r.Body.Close()
+
 		body, err := io.ReadAll(r.Body)
 		if err != nil || string(body) == "" {
 			w.WriteHeader(http.StatusBadRequest)
@@ -54,7 +47,14 @@ func (h *Handlers) Encode() http.HandlerFunc {
 			return
 		}
 
-		if hashID = h.storage.GetURL(stringURI); hashID == "" {
+		hashID, err := h.storage.GetURL(stringURI)
+		if err != nil {
+			logger.Log.Debug("error get url response", zap.Error(err))
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if hashID == "" {
 			hashID = shortURL(stringURI)
 			err := h.storage.SaveURL(hashID, stringURI)
 			if err != nil {
@@ -94,7 +94,14 @@ func (h *Handlers) Decode() http.HandlerFunc {
 			return
 		}
 
-		if fullURL := h.storage.GetURL(id); fullURL != "" {
+		fullURL, err := h.storage.GetURL(id)
+		if err != nil {
+			logger.Log.Debug("error get url response", zap.Error(err))
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if fullURL != "" {
 			http.Redirect(w, r, fullURL, http.StatusTemporaryRedirect)
 			return
 		}
@@ -106,7 +113,6 @@ func (h *Handlers) Decode() http.HandlerFunc {
 
 func (h *Handlers) Shorten() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		var hashID string
 
 		logger.Log.Debug("decoding request")
 
@@ -118,7 +124,14 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 			return
 		}
 
-		if hashID = h.storage.GetURL(req.URL); hashID == "" {
+		hashID, err := h.storage.GetURL(req.URL)
+		if err != nil {
+			logger.Log.Debug("error get url response", zap.Error(err))
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		if hashID == "" {
 			hashID = shortURL(req.URL)
 			err := h.storage.SaveURL(hashID, req.URL)
 			if err != nil {
