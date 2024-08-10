@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/json"
@@ -16,6 +17,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 type Handlers struct {
@@ -155,6 +157,24 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 			return
 		}
 		logger.Log.Debug("sending HTTP 200 response")
+	}
+
+	return http.HandlerFunc(fn)
+}
+
+func (h *Handlers) PingDB() http.HandlerFunc {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+
+		if err := h.storage.Ping(ctx); err != nil {
+			logger.Log.Debug("error database connect ping", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
 	}
 
 	return http.HandlerFunc(fn)

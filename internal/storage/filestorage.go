@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"github.com/romanp1989/go-shortener/internal/models"
 	"io"
@@ -86,4 +87,8 @@ func (s *FileStorage) Get(inputURL string) (string, error) {
 	}
 
 	return "", nil
+}
+
+func (s *FileStorage) Ping(ctx context.Context) error {
+	return nil
 }

@@ -1,5 +1,7 @@
 package storage
 
+import "context"
+
 type CacheStorage struct {
 	storageURL map[string]string
 }
@@ -18,5 +20,9 @@ func (c *CacheStorage) Get(inputURL string) (string, error) {
 func (c *CacheStorage) Save(originalURL string, shortURL string) error {
 	c.storageURL[shortURL] = originalURL
 	c.storageURL[originalURL] = shortURL
+	return nil
+}
+
+func (c *CacheStorage) Ping(ctx context.Context) error {
 	return nil
 }
