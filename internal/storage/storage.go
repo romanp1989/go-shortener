@@ -36,6 +36,10 @@ func (s *Storage) SaveURL(originalURL string, shortURL string) error {
 	return s.storage.Save(originalURL, shortURL)
 }
 
+func (s *Storage) SaveBatchURL(ctx context.Context, urls []models.StorageURL) ([]string, error) {
+	return s.storage.SaveBatch(ctx, urls)
+}
+
 func (s *Storage) Ping(ctx context.Context) error {
 	return s.storage.Ping(ctx)
 }

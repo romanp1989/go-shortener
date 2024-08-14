@@ -89,6 +89,10 @@ func (s *FileStorage) Get(inputURL string) (string, error) {
 	return "", nil
 }
 
+func (s *FileStorage) SaveBatch(ctx context.Context, urls []models.StorageURL) ([]string, error) {
+	panic("don't implement method")
+}
+
 func (s *FileStorage) Ping(ctx context.Context) error {
 	return nil
 }

@@ -31,7 +31,7 @@ func ParseFlags() error {
 	flag.StringVar(&Options.FlagShortURL, "b", "http://localhost:8080", "address to run server")
 	flag.StringVar(&Options.FlagLogLevel, "l", "info", "log level")
 	flag.StringVar(&Options.FlagFileStorage, "f", "/tmp/shortener.txt", "file storage")
-	flag.StringVar(&Options.FlagDatabaseDsn, "d", "", "Database DNS")
+	flag.StringVar(&Options.FlagDatabaseDsn, "d", "", "Database DSN")
 	flag.Parse()
 
 	var cfg ConfigENV
