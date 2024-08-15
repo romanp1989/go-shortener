@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/romanp1989/go-shortener/internal/config"
@@ -13,7 +14,6 @@ import (
 	"github.com/romanp1989/go-shortener/internal/storage"
 	"go.uber.org/zap"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -49,22 +49,24 @@ func (h *Handlers) Encode() http.HandlerFunc {
 			return
 		}
 
-		hashID, err := h.storage.GetURL(stringURI)
+		hashID := shortURL(stringURI)
+		shortID, err := h.storage.SaveURL(r.Context(), stringURI, hashID)
 		if err != nil {
-			logger.Log.Debug("error get url response", zap.Error(err))
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
+			logger.Log.Debug("Ошибка добавления данных", zap.Error(err))
 
-		if hashID == "" {
-			hashID = shortURL(stringURI)
-			err := h.storage.SaveURL(hashID, stringURI)
-			if err != nil {
-				log.Fatal(err)
+			var errConflict *storage.URLConflictError
+			if errors.As(err, &errConflict) {
+				shortID = errConflict.URL
+				w.WriteHeader(http.StatusConflict)
+			} else {
+				w.WriteHeader(http.StatusBadRequest)
+				return
 			}
+		} else {
+			w.WriteHeader(http.StatusCreated)
 		}
 
-		resp := fmt.Sprintf("%s/%s", config.Options.FlagShortURL, hashID)
+		resp := fmt.Sprintf("%s/%s", config.Options.FlagShortURL, shortID)
 
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusCreated)
@@ -126,33 +128,35 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 			return
 		}
 
-		hashID, err := h.storage.GetURL(req.URL)
+		hashID := shortURL(req.URL)
+		shortID, err := h.storage.SaveURL(r.Context(), req.URL, hashID)
 		if err != nil {
-			logger.Log.Debug("error get url response", zap.Error(err))
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
+			logger.Log.Debug("Ошибка добавления данных", zap.Error(err))
 
-		if hashID == "" {
-			hashID = shortURL(req.URL)
-			err := h.storage.SaveURL(hashID, req.URL)
-			if err != nil {
-				log.Fatal(err)
+			var errConflict *storage.URLConflictError
+			if errors.As(err, &errConflict) {
+				shortID = errConflict.URL
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusConflict)
+			} else {
+				w.WriteHeader(http.StatusBadRequest)
+				return
 			}
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
 		}
 
-		resp := fmt.Sprintf("%s/%s", config.Options.FlagShortURL, hashID)
+		resp := fmt.Sprintf("%s/%s", config.Options.FlagShortURL, shortID)
 
 		shortenResponse := models.ShortenResponse{
 			Result: resp,
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-
 		enc := json.NewEncoder(w)
 		if err := enc.Encode(shortenResponse); err != nil {
-			logger.Log.Debug("error encoding response", zap.Error(err))
+			logger.Log.Debug("Ошибка создания ответа", zap.Error(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}

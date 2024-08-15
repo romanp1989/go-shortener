@@ -20,10 +20,10 @@ func (c *CacheStorage) Get(inputURL string) (string, error) {
 	return "", nil
 }
 
-func (c *CacheStorage) Save(originalURL string, shortURL string) error {
+func (c *CacheStorage) Save(ctx context.Context, originalURL string, shortURL string) (string, error) {
 	c.storageURL[shortURL] = originalURL
 	c.storageURL[originalURL] = shortURL
-	return nil
+	return shortURL, nil
 }
 
 func (c *CacheStorage) SaveBatch(ctx context.Context, urls []models.StorageURL) ([]string, error) {

@@ -111,7 +111,7 @@ func TestDecode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			hashID := shortURL(tt.want.responseURL)
 			if tt.want.responseURL != "" {
-				s.SaveURL(tt.want.responseURL, hashID)
+				s.SaveURL(context.Background(), tt.want.responseURL, hashID)
 			}
 			body := httptest.NewRequest(http.MethodGet, "/{id}", nil)
 			w := httptest.NewRecorder()

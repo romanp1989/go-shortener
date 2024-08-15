@@ -28,13 +28,13 @@ func NewFileStorage(path string) (*FileStorage, error) {
 	return &FileStorage{FileStoragePath: path}, nil
 }
 
-func (s *FileStorage) Save(originalURL string, shortURL string) error {
+func (s *FileStorage) Save(ctx context.Context, originalURL string, shortURL string) (string, error) {
 	var urlStorage models.StorageURL
 
 	file, err := os.OpenFile(s.FileStoragePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Printf("Ошибка при открытии: %s", err)
-		return err
+		return "", err
 	}
 
 	defer file.Close()
@@ -42,7 +42,11 @@ func (s *FileStorage) Save(originalURL string, shortURL string) error {
 	urlStorage.OriginalURL, urlStorage.ShortURL = originalURL, shortURL
 	encoder := json.NewEncoder(file)
 
-	return encoder.Encode(urlStorage)
+	if err = encoder.Encode(urlStorage); err != nil {
+		return "", err
+	}
+
+	return shortURL, nil
 }
 
 func (s *FileStorage) Get(inputURL string) (string, error) {

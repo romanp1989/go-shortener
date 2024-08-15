@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/romanp1989/go-shortener/internal/models"
 	"log"
@@ -37,12 +39,22 @@ func NewDB(DBPath string) *RDB {
 	}
 }
 
-func (d *RDB) Save(originalURL string, shortURL string) error {
-	_, err := d.db.Exec("INSERT INTO urls(short_url, original_url) VALUES ($1, $2)", shortURL, originalURL)
+func (d *RDB) Save(ctx context.Context, originalURL string, shortURL string) (string, error) {
+	var insertedURL string
+	var pgErr *pgconn.PgError
+
+	insertQuery := `INSERT INTO urls(short_url, original_url) 
+VALUES ($1, $2)
+RETURNING short_url`
+	err := d.db.QueryRowContext(ctx, insertQuery, shortURL, originalURL).Scan(&insertedURL)
 	if err != nil {
-		return err
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+			err = ErrConflict
+			return "", NewURLConflictError(shortURL, err)
+		}
+		return "", err
 	}
-	return nil
+	return insertedURL, nil
 }
 
 func (d *RDB) Get(inputURL string) (string, error) {

@@ -16,7 +16,7 @@ type StorageURL struct {
 }
 
 type Storage interface {
-	Save(OriginalURL string, ShortURL string) error
+	Save(ctx context.Context, OriginalURL string, ShortURL string) (string, error)
 	Get(inputURL string) (string, error)
 	SaveBatch(ctx context.Context, urls []StorageURL) ([]string, error)
 	Ping(ctx context.Context) error
