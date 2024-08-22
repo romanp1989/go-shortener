@@ -7,18 +7,28 @@ import (
 )
 
 var Options struct {
-	FlagRunPort  string
-	FlagShortURL string
+	FlagRunPort     string
+	FlagShortURL    string
+	FlagLogLevel    string
+	FlagFileStorage string
 }
 
 type ConfigENV struct {
 	ServerAddress string `env:"SERVER_ADDRESS"`
 	BaseURL       string `env:"BASE_URL"`
+	LogLevel      string `env:"LOG_LEVEL"`
+	FileStorage   string `env:"FILE_STORAGE_PATH"`
 }
 
 func ParseFlags() error {
+	if Options.FlagRunPort != "" {
+		return nil
+	}
+
 	flag.StringVar(&Options.FlagRunPort, "a", ":8080", "port to run server")
 	flag.StringVar(&Options.FlagShortURL, "b", "http://localhost:8080", "address to run server")
+	flag.StringVar(&Options.FlagLogLevel, "l", "info", "log level")
+	flag.StringVar(&Options.FlagFileStorage, "f", "/tmp/shortener.txt", "file storage")
 	flag.Parse()
 
 	var cfg ConfigENV
@@ -35,6 +45,14 @@ func ParseFlags() error {
 
 	if cfg.BaseURL != "" {
 		Options.FlagShortURL = cfg.BaseURL
+	}
+
+	if cfg.LogLevel != "" {
+		Options.FlagLogLevel = cfg.LogLevel
+	}
+
+	if cfg.FileStorage != "" {
+		Options.FlagFileStorage = cfg.FileStorage
 	}
 
 	return nil
