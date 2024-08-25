@@ -12,6 +12,7 @@ var Options struct {
 	FlagLogLevel    string
 	FlagFileStorage string
 	FlagDatabaseDsn string
+	FlagSecretKey   string
 }
 
 type ConfigENV struct {
@@ -20,6 +21,7 @@ type ConfigENV struct {
 	LogLevel      string `env:"LOG_LEVEL"`
 	FileStorage   string `env:"FILE_STORAGE_PATH"`
 	DatabaseDsn   string `env:"DATABASE_DSN"`
+	SecretKey     string `env:"SECRET_KEY"`
 }
 
 func ParseFlags() error {
@@ -32,6 +34,7 @@ func ParseFlags() error {
 	flag.StringVar(&Options.FlagLogLevel, "l", "info", "log level")
 	flag.StringVar(&Options.FlagFileStorage, "f", "/tmp/shortener.txt", "file storage")
 	flag.StringVar(&Options.FlagDatabaseDsn, "d", "", "Database DSN")
+	flag.StringVar(&Options.FlagSecretKey, "sk", "verycomplexsecretkey", "Secret key")
 	flag.Parse()
 
 	var cfg ConfigENV
@@ -60,6 +63,9 @@ func ParseFlags() error {
 
 	if cfg.DatabaseDsn != "" {
 		Options.FlagDatabaseDsn = cfg.DatabaseDsn
+	}
+	if cfg.SecretKey != "" {
+		Options.FlagSecretKey = cfg.SecretKey
 	}
 
 	return nil

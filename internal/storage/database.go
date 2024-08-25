@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -24,6 +25,7 @@ func NewDB(DBPath string) *RDB {
 
 	createUrlsTableQuery := `CREATE TABLE IF NOT EXISTS urls(
 		id serial primary key,
+		user_id uuid not null,
 		short_url varchar(255) not null,
 		original_url varchar(255) not null);
                                
@@ -39,14 +41,14 @@ func NewDB(DBPath string) *RDB {
 	}
 }
 
-func (d *RDB) Save(ctx context.Context, originalURL string, shortURL string) (string, error) {
+func (d *RDB) Save(ctx context.Context, originalURL string, shortURL string, userID *uuid.UUID) (string, error) {
 	var insertedURL string
 	var pgErr *pgconn.PgError
 
-	insertQuery := `INSERT INTO urls(short_url, original_url) 
-VALUES ($1, $2)
+	insertQuery := `INSERT INTO urls(short_url, original_url, user_id) 
+VALUES ($1, $2, $3)
 RETURNING short_url`
-	err := d.db.QueryRowContext(ctx, insertQuery, shortURL, originalURL).Scan(&insertedURL)
+	err := d.db.QueryRowContext(ctx, insertQuery, shortURL, originalURL, userID).Scan(&insertedURL)
 	if err != nil {
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
 			err = ErrConflict
@@ -79,7 +81,7 @@ func (d *RDB) Get(inputURL string) (string, error) {
 	return "", nil
 }
 
-func (d *RDB) SaveBatch(ctx context.Context, urls []models.StorageURL) ([]string, error) {
+func (d *RDB) SaveBatch(ctx context.Context, urls []models.StorageURL, userID *uuid.UUID) ([]string, error) {
 	tx, err := d.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -95,14 +97,14 @@ func (d *RDB) SaveBatch(ctx context.Context, urls []models.StorageURL) ([]string
 		if i > 0 {
 			insertValues += ","
 		}
-		insertValues += fmt.Sprintf("($%d, $%d)", paramNumber+1, paramNumber+2)
+		insertValues += fmt.Sprintf("($%d, $%d)", paramNumber+1, paramNumber+2, paramNumber+3)
 
 		args = append(args, url.ShortURL)
 		args = append(args, url.OriginalURL)
-		paramNumber += 2
+		paramNumber += 3
 	}
 
-	query := `INSERT INTO urls (short_url, original_url) 
+	query := `INSERT INTO urls (short_url, original_url, user_id) 
 			 	VALUES ` + insertValues + `
 				ON CONFLICT (original_url) DO UPDATE SET short_url = EXCLUDED.short_url, original_url = EXCLUDED.original_url
 				RETURNING short_url`
@@ -132,6 +134,33 @@ func (d *RDB) SaveBatch(ctx context.Context, urls []models.StorageURL) ([]string
 	tx.Commit()
 
 	return shortURLs, nil
+}
+
+func (d *RDB) GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]models.StorageURL, error) {
+	storageURLs := make([]models.StorageURL, 0)
+	query := `SELECT user_id, short_url, original_url WHERE user_id = $1`
+	rows, err := d.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		var store models.StorageURL
+		err = rows.Scan(store.UserID, store.ShortURL, store.OriginalURL)
+		if err != nil {
+			if !errors.Is(err, sql.ErrNoRows) {
+				return nil, err
+			}
+			return nil, nil
+		}
+		storageURLs = append(storageURLs, store)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+	return storageURLs, nil
 }
 
 func (d *RDB) Ping(ctx context.Context) error {

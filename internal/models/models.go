@@ -1,6 +1,9 @@
 package models
 
-import "context"
+import (
+	"context"
+	"github.com/gofrs/uuid"
+)
 
 type ShortenRequest struct {
 	URL string `json:"url"`
@@ -11,15 +14,17 @@ type ShortenResponse struct {
 }
 
 type StorageURL struct {
-	OriginalURL string `json:"original_url"`
-	ShortURL    string `json:"short_url"`
+	UserID      *uuid.UUID `json:"user_id"`
+	OriginalURL string     `json:"original_url"`
+	ShortURL    string     `json:"short_url"`
 }
 
 type Storage interface {
-	Save(ctx context.Context, OriginalURL string, ShortURL string) (string, error)
+	Save(ctx context.Context, OriginalURL string, ShortURL string, userID *uuid.UUID) (string, error)
 	Get(inputURL string) (string, error)
-	SaveBatch(ctx context.Context, urls []StorageURL) ([]string, error)
+	SaveBatch(ctx context.Context, urls []StorageURL, userID *uuid.UUID) ([]string, error)
 	Ping(ctx context.Context) error
+	GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]StorageURL, error)
 }
 
 type BatchShortenRequest struct {

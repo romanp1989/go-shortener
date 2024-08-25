@@ -5,8 +5,9 @@ import (
 	"compress/gzip"
 	"context"
 	"github.com/go-chi/chi/v5"
-	"github.com/romanp1989/go-shortener/internal/compress"
+	"github.com/romanp1989/go-shortener/internal/auth"
 	"github.com/romanp1989/go-shortener/internal/config"
+	"github.com/romanp1989/go-shortener/internal/middlewares"
 	"github.com/romanp1989/go-shortener/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -110,8 +111,9 @@ func TestDecode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			hashID := shortURL(tt.want.responseURL)
+			userID := auth.EnsureRandom()
 			if tt.want.responseURL != "" {
-				s.SaveURL(context.Background(), tt.want.responseURL, hashID)
+				s.SaveURL(context.Background(), tt.want.responseURL, hashID, &userID)
 			}
 			body := httptest.NewRequest(http.MethodGet, "/{id}", nil)
 			w := httptest.NewRecorder()
@@ -195,7 +197,7 @@ func TestGzipCompression(t *testing.T) {
 	s := storage.Init(config.Options.FlagDatabaseDsn, config.Options.FlagFileStorage)
 	h := New(s)
 
-	handler := compress.GzipMiddleware(h.Encode())
+	handler := middlewares.GzipMiddleware(h.Encode())
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()

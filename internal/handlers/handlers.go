@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/romanp1989/go-shortener/internal/auth"
 	"github.com/romanp1989/go-shortener/internal/config"
 	"github.com/romanp1989/go-shortener/internal/logger"
 	"github.com/romanp1989/go-shortener/internal/models"
@@ -34,8 +35,17 @@ func New(storage *storage.Storage) Handlers {
 
 func (h *Handlers) Encode() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
+		ctx := r.Context()
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
 
+		userID := auth.UIDFromContext(ctx)
+		if userID == nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		defer r.Body.Close()
 		body, err := io.ReadAll(r.Body)
 		if err != nil || string(body) == "" {
 			w.WriteHeader(http.StatusBadRequest)
@@ -50,7 +60,7 @@ func (h *Handlers) Encode() http.HandlerFunc {
 		}
 
 		hashID := shortURL(stringURI)
-		shortID, err := h.storage.SaveURL(r.Context(), stringURI, hashID)
+		shortID, err := h.storage.SaveURL(r.Context(), stringURI, hashID, userID)
 		if err != nil {
 			logger.Log.Debug("Ошибка добавления данных", zap.Error(err))
 
@@ -120,6 +130,16 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 
 		logger.Log.Debug("decoding request")
 
+		ctx := r.Context()
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
+		userID := auth.UIDFromContext(ctx)
+		if userID == nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
 		var req models.ShortenRequest
 		dec := json.NewDecoder(r.Body)
 		if err := dec.Decode(&req); err != nil {
@@ -129,7 +149,7 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 		}
 
 		hashID := shortURL(req.URL)
-		shortID, err := h.storage.SaveURL(r.Context(), req.URL, hashID)
+		shortID, err := h.storage.SaveURL(r.Context(), req.URL, hashID, userID)
 		if err != nil {
 			logger.Log.Debug("Ошибка добавления данных", zap.Error(err))
 
@@ -170,6 +190,16 @@ func (h *Handlers) SaveBatch() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		var batchReq []models.BatchShortenRequest
 
+		ctx := r.Context()
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
+		userID := auth.UIDFromContext(ctx)
+		if userID == nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
 		err := json.NewDecoder(r.Body).Decode(&batchReq)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -200,7 +230,7 @@ func (h *Handlers) SaveBatch() http.HandlerFunc {
 			}
 		}
 
-		urls, err := h.storage.SaveBatchURL(r.Context(), shortURLs)
+		urls, err := h.storage.SaveBatchURL(r.Context(), shortURLs, userID)
 		if err != nil {
 			logger.Log.Debug("error urls save", zap.Error(err))
 			w.WriteHeader(http.StatusBadRequest)
@@ -245,6 +275,49 @@ func (h *Handlers) PingDB() http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
+	}
+
+	return http.HandlerFunc(fn)
+}
+
+func (h *Handlers) GetURLs() http.HandlerFunc {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+
+		allUrls := make([]models.StorageURL, 0)
+		ctx := r.Context()
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
+		userID := auth.UIDFromContext(ctx)
+		if userID == nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		urls, err := h.storage.GetAllUrlsByUser(ctx, userID)
+		if err != nil {
+			logger.Log.Debug("Ошибка при получении urls пользователя", zap.Error(err))
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		for _, v := range urls {
+			var store models.StorageURL
+			store.UserID = v.UserID
+			store.ShortURL = v.ShortURL
+			store.OriginalURL = v.OriginalURL
+			allUrls = append(allUrls, store)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+
+		enc := json.NewEncoder(w)
+		if err := enc.Encode(allUrls); err != nil {
+			logger.Log.Debug("Ошибка создания ответа", zap.Error(err))
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		logger.Log.Debug("sending HTTP 200 response")
 	}
 
 	return http.HandlerFunc(fn)
