@@ -59,6 +59,10 @@ func TestEncode(t *testing.T) {
 			r := httptest.NewRequest(tt.method, "/", body)
 			r.Header.Set("Content-Type", "text/plain")
 
+			userID := auth.EnsureRandom()
+			rctx := context.WithValue(r.Context(), "auth", userID)
+			r = r.WithContext(rctx)
+
 			w := httptest.NewRecorder()
 
 			fn := h.Encode()
@@ -170,6 +174,10 @@ func TestShorten(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			body := strings.NewReader(tt.requestBody)
 			r := httptest.NewRequest(tt.method, "/", body)
+
+			userID := auth.EnsureRandom()
+			rctx := context.WithValue(r.Context(), "auth", userID)
+			r = r.WithContext(rctx)
 			r.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
@@ -197,7 +205,7 @@ func TestGzipCompression(t *testing.T) {
 	s := storage.Init(config.Options.FlagDatabaseDsn, config.Options.FlagFileStorage)
 	h := New(s)
 
-	handler := middlewares.GzipMiddleware(h.Encode())
+	handler := middlewares.AuthMiddleware(middlewares.GzipMiddleware(h.Encode()))
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -220,6 +228,16 @@ func TestGzipCompression(t *testing.T) {
 		r.Header.Set("Content-Encoding", "gzip")
 		r.Header.Set("Accept-Encoding", "")
 
+		userID := auth.EnsureRandom()
+		token, err := auth.CreateToken(&userID)
+
+		cookie := &http.Cookie{
+			Name:  "auth",
+			Value: token,
+			Path:  "/",
+		}
+		r.AddCookie(cookie)
+
 		resp, err := http.DefaultClient.Do(r)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusCreated, resp.StatusCode)
@@ -236,6 +254,16 @@ func TestGzipCompression(t *testing.T) {
 		r := httptest.NewRequest("POST", srv.URL, buf)
 		r.RequestURI = ""
 		r.Header.Set("Accept-Encoding", "gzip")
+
+		userID := auth.EnsureRandom()
+		token, err := auth.CreateToken(&userID)
+
+		cookie := &http.Cookie{
+			Name:  "auth",
+			Value: token,
+			Path:  "/",
+		}
+		r.AddCookie(cookie)
 
 		resp, err := http.DefaultClient.Do(r)
 		require.NoError(t, err)

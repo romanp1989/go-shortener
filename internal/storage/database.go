@@ -97,7 +97,7 @@ func (d *RDB) SaveBatch(ctx context.Context, urls []models.StorageURL, userID *u
 		if i > 0 {
 			insertValues += ","
 		}
-		insertValues += fmt.Sprintf("($%d, $%d)", paramNumber+1, paramNumber+2, paramNumber+3)
+		insertValues += fmt.Sprintf("($%d, $%d, $%d)", paramNumber+1, paramNumber+2, paramNumber+3)
 
 		args = append(args, url.ShortURL)
 		args = append(args, url.OriginalURL)

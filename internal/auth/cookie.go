@@ -19,7 +19,7 @@ type Claims struct {
 // NewCookie Новая cookie авторизации
 func NewCookie(w http.ResponseWriter, userID *uuid.UUID) {
 
-	token, err := createToken(userID)
+	token, err := CreateToken(userID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -34,7 +34,7 @@ func NewCookie(w http.ResponseWriter, userID *uuid.UUID) {
 	http.SetCookie(w, cookie)
 }
 
-func createToken(userID *uuid.UUID) (string, error) {
+func CreateToken(userID *uuid.UUID) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(tokenExp)),

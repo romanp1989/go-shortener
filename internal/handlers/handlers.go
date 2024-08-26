@@ -36,7 +36,7 @@ func New(storage *storage.Storage) Handlers {
 func (h *Handlers) Encode() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		_, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
 		userID := auth.UIDFromContext(ctx)
