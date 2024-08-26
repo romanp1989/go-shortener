@@ -283,7 +283,6 @@ func (h *Handlers) PingDB() http.HandlerFunc {
 func (h *Handlers) GetURLs() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 
-		allUrls := make([]models.StorageURL, 0)
 		ctx := r.Context()
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
@@ -301,22 +300,24 @@ func (h *Handlers) GetURLs() http.HandlerFunc {
 			return
 		}
 
+		allUrls := make([]models.StorageURL, 0, len(urls))
 		for _, v := range urls {
 			var store models.StorageURL
-			store.UserID = v.UserID
-			store.ShortURL = v.ShortURL
+			store.ShortURL = fmt.Sprintf("%s/%s", config.Options.FlagShortURL, v.ShortURL)
 			store.OriginalURL = v.OriginalURL
 			allUrls = append(allUrls, store)
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-
-		enc := json.NewEncoder(w)
-		if err := enc.Encode(allUrls); err != nil {
-			logger.Log.Debug("Ошибка создания ответа", zap.Error(err))
+		b, err := json.Marshal(allUrls)
+		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(b)
+
 		logger.Log.Debug("sending HTTP 200 response")
 	}
 

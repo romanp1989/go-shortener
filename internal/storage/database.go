@@ -138,7 +138,7 @@ func (d *RDB) SaveBatch(ctx context.Context, urls []models.StorageURL, userID *u
 
 func (d *RDB) GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]models.StorageURL, error) {
 	storageURLs := make([]models.StorageURL, 0)
-	query := `SELECT user_id, short_url, original_url WHERE user_id = $1`
+	query := `SELECT short_url, original_url FROM urls WHERE user_id = $1 and length(short_url) > 0`
 	rows, err := d.db.QueryContext(ctx, query, userID)
 	if err != nil {
 		return nil, err
@@ -146,7 +146,7 @@ func (d *RDB) GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]models
 
 	for rows.Next() {
 		var store models.StorageURL
-		err = rows.Scan(store.UserID, store.ShortURL, store.OriginalURL)
+		err = rows.Scan(&store.ShortURL, &store.OriginalURL)
 		if err != nil {
 			if !errors.Is(err, sql.ErrNoRows) {
 				return nil, err

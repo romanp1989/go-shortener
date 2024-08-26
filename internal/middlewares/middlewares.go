@@ -78,11 +78,12 @@ func WithLogging(h http.Handler) http.Handler {
 	})
 }
 
-func AuthMiddleware(h http.Handler) http.Handler {
+func AuthMiddlewareSet(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var uid *uuid.UUID
 
 		cookie, err := r.Cookie("auth")
+
 		if err != nil {
 			if !errors.Is(err, http.ErrNoCookie) {
 				w.WriteHeader(http.StatusUnauthorized)
@@ -90,15 +91,50 @@ func AuthMiddleware(h http.Handler) http.Handler {
 			}
 		}
 
-		if cookie != nil {
-			uid, err = auth.GetUserID(cookie.Value)
-		}
-
-		if uid == nil {
+		if cookie == nil {
 			userID := auth.EnsureRandom()
 			uid = &userID
 
 			auth.NewCookie(w, uid)
+		} else if cookie != nil {
+			uid, err = auth.GetUserID(cookie.Value)
+		}
+
+		if uid == nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		ctx := auth.Context(r.Context(), *uid)
+		r = r.WithContext(ctx)
+
+		h.ServeHTTP(w, r)
+	})
+}
+
+func AuthMiddlewareRead(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var uid *uuid.UUID
+
+		cookie, err := r.Cookie("auth")
+
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		if cookie == nil {
+			userID := auth.EnsureRandom()
+			uid = &userID
+
+			auth.NewCookie(w, uid)
+		} else if cookie != nil {
+			uid, err = auth.GetUserID(cookie.Value)
+		}
+
+		if uid == nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
 		}
 
 		ctx := auth.Context(r.Context(), *uid)

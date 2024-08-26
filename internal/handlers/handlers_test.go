@@ -205,7 +205,7 @@ func TestGzipCompression(t *testing.T) {
 	s := storage.Init(config.Options.FlagDatabaseDsn, config.Options.FlagFileStorage)
 	h := New(s)
 
-	handler := middlewares.AuthMiddleware(middlewares.GzipMiddleware(h.Encode()))
+	handler := middlewares.AuthMiddlewareSet(middlewares.GzipMiddleware(h.Encode()))
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
