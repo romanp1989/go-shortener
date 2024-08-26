@@ -97,11 +97,11 @@ func (d *RDB) SaveBatch(ctx context.Context, urls []models.StorageURL, userID *u
 		if i > 0 {
 			insertValues += ","
 		}
-		insertValues += fmt.Sprintf("($%d, $%d, $%d)", paramNumber+1, paramNumber+2, paramNumber+3)
+		insertValues += fmt.Sprintf("($%d, $%d, '%v')", paramNumber+1, paramNumber+2, userID)
 
 		args = append(args, url.ShortURL)
 		args = append(args, url.OriginalURL)
-		paramNumber += 3
+		paramNumber += 2
 	}
 
 	query := `INSERT INTO urls (short_url, original_url, user_id) 
