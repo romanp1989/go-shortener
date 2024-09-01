@@ -159,6 +159,7 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusConflict)
+				return
 			} else {
 				w.WriteHeader(http.StatusBadRequest)
 				return
@@ -256,68 +257,6 @@ func (h *Handlers) SaveBatch() http.HandlerFunc {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		logger.Log.Debug("sending HTTP 200 response")
-	}
-
-	return http.HandlerFunc(fn)
-}
-
-func (h *Handlers) PingDB() http.HandlerFunc {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-		defer cancel()
-
-		if err := h.storage.Ping(ctx); err != nil {
-			logger.Log.Debug("error database connect ping", zap.Error(err))
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusOK)
-	}
-
-	return http.HandlerFunc(fn)
-}
-
-func (h *Handlers) GetURLs() http.HandlerFunc {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-
-		ctx := r.Context()
-		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-		defer cancel()
-
-		userID := auth.UIDFromContext(ctx)
-		if userID == nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		urls, err := h.storage.GetAllUrlsByUser(ctx, userID)
-		if err != nil {
-			logger.Log.Debug("Ошибка при получении urls пользователя", zap.Error(err))
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-
-		allUrls := make([]models.StorageURL, 0, len(urls))
-		for _, v := range urls {
-			var store models.StorageURL
-			store.ShortURL = fmt.Sprintf("%s/%s", config.Options.FlagShortURL, v.ShortURL)
-			store.OriginalURL = v.OriginalURL
-			allUrls = append(allUrls, store)
-		}
-
-		b, err := json.Marshal(allUrls)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		w.Header().Set("content-type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(b)
-
 		logger.Log.Debug("sending HTTP 200 response")
 	}
 

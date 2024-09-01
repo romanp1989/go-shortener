@@ -7,14 +7,17 @@ import (
 	"fmt"
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/pgtype"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/romanp1989/go-shortener/internal/models"
 	"log"
+	"sync"
 )
 
 type RDB struct {
 	db *sql.DB
+	mu sync.RWMutex
 }
 
 func NewDB(DBPath string) *RDB {
@@ -36,12 +39,22 @@ func NewDB(DBPath string) *RDB {
 		return nil
 	}
 
+	addColumnDeletedFlag := `ALTER TABLE urls ADD COLUMN IF NOT EXISTS deleted_flag boolean`
+	_, err = db.Exec(addColumnDeletedFlag)
+	if err != nil {
+		log.Fatal(err)
+		return nil
+	}
+
 	return &RDB{
 		db: db,
 	}
 }
 
 func (d *RDB) Save(ctx context.Context, originalURL string, shortURL string, userID *uuid.UUID) (string, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	var insertedURL string
 	var pgErr *pgconn.PgError
 
@@ -82,6 +95,9 @@ func (d *RDB) Get(inputURL string) (string, error) {
 }
 
 func (d *RDB) SaveBatch(ctx context.Context, urls []models.StorageURL, userID *uuid.UUID) ([]string, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	tx, err := d.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -134,6 +150,37 @@ func (d *RDB) SaveBatch(ctx context.Context, urls []models.StorageURL, userID *u
 	tx.Commit()
 
 	return shortURLs, nil
+}
+
+func (d *RDB) DeleteUrlsBatch(ctx context.Context, userID *uuid.UUID, urls []string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	tx, err := d.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	urlList := new(pgtype.VarcharArray)
+
+	if err := urlList.Set(urls); err != nil {
+		return fmt.Errorf("Ошибка при формировании списка url для удаления: %v", err)
+	}
+
+	query := `UPDATE urls
+			SET deleted_flag = true
+			WHERE user_id = $1 and short_url = ANY($2)`
+	res, err := d.db.ExecContext(ctx, query, userID, urlList)
+	log.Print(res)
+
+	if err != nil {
+		return err
+	}
+
+	tx.Commit()
+
+	return nil
 }
 
 func (d *RDB) GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]models.StorageURL, error) {

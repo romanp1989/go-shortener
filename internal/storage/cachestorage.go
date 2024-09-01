@@ -31,6 +31,10 @@ func (c *CacheStorage) SaveBatch(ctx context.Context, urls []models.StorageURL, 
 	return nil, nil
 }
 
+func (s *CacheStorage) DeleteUrlsBatch(ctx context.Context, userID *uuid.UUID, urls []string) error {
+	return nil
+}
+
 func (s *CacheStorage) GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]models.StorageURL, error) {
 	return nil, nil
 }

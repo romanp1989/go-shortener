@@ -117,6 +117,10 @@ func (s *FileStorage) SaveBatch(ctx context.Context, urls []models.StorageURL, u
 	return nil, nil
 }
 
+func (s *FileStorage) DeleteUrlsBatch(ctx context.Context, userID *uuid.UUID, urls []string) error {
+	return nil
+}
+
 func (s *FileStorage) GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]models.StorageURL, error) {
 	return nil, nil
 }

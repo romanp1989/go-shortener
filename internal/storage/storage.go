@@ -45,6 +45,10 @@ func (s *Storage) GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]mo
 	return s.storage.GetAllUrlsByUser(ctx, userID)
 }
 
+func (s *Storage) DeleteUrlsBatch(ctx context.Context, userID *uuid.UUID, urls []string) error {
+	return s.storage.DeleteUrlsBatch(ctx, userID, urls)
+}
+
 func (s *Storage) Ping(ctx context.Context) error {
 	return s.storage.Ping(ctx)
 }
