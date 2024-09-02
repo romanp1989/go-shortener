@@ -46,7 +46,7 @@ func (s *Storage) GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]mo
 }
 
 func (s *Storage) DeleteUrlsBatch(ctx context.Context, userID *uuid.UUID, urls []string) error {
-	return s.storage.DeleteUrlsBatch(ctx, userID, urls)
+	return s.storage.DeleteBatch(ctx, userID, urls)
 }
 
 func (s *Storage) Ping(ctx context.Context) error {

@@ -152,7 +152,7 @@ func (d *RDB) SaveBatch(ctx context.Context, urls []models.StorageURL, userID *u
 	return shortURLs, nil
 }
 
-func (d *RDB) DeleteUrlsBatch(ctx context.Context, userID *uuid.UUID, urls []string) error {
+func (d *RDB) DeleteBatch(ctx context.Context, userID *uuid.UUID, urls []string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 

@@ -7,17 +7,20 @@ import (
 
 type ctxAuthKey string
 
-const authKey ctxAuthKey = "auth"
+const AuthKey ctxAuthKey = "auth"
 
 func Context(parent context.Context, uid uuid.UUID) context.Context {
-	return context.WithValue(parent, authKey, uid)
+	return context.WithValue(parent, AuthKey, uid)
 }
 
 func UIDFromContext(ctx context.Context) *uuid.UUID {
-	val := ctx.Value(authKey)
-	if val == nil {
+	val, ok := ctx.Value(AuthKey).(uuid.UUID)
+	if !ok {
 		return nil
 	}
-	uid := val.(uuid.UUID)
+	if val.IsNil() {
+		return nil
+	}
+	uid := val
 	return &uid
 }

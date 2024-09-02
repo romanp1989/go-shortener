@@ -134,9 +134,22 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
+		w.Header().Set("Content-Type", "application/json")
+
 		userID := auth.UIDFromContext(ctx)
 		if userID == nil {
+			shortenResponse := models.ShortenResponse{
+				Result: "Пользователь неавторизован",
+			}
+			enc := json.NewEncoder(w)
+			if err := enc.Encode(shortenResponse); err != nil {
+				logger.Log.Debug("Ошибка создания ответа", zap.Error(err))
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
 			w.WriteHeader(http.StatusUnauthorized)
+
 			return
 		}
 
@@ -157,7 +170,6 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 			if errors.As(err, &errConflict) {
 				//shortID = errConflict.URL
 
-				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusConflict)
 				return
 			} else {
@@ -165,7 +177,7 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 				return
 			}
 		} else {
-			w.Header().Set("Content-Type", "application/json")
+			//w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
 		}
 

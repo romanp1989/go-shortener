@@ -24,9 +24,6 @@ func TestEncode(t *testing.T) {
 		responseURL string
 	}
 
-	type ctxAuthKey string
-	const authKey ctxAuthKey = "auth"
-
 	tests := []struct {
 		name        string
 		method      string
@@ -63,7 +60,7 @@ func TestEncode(t *testing.T) {
 			r.Header.Set("Content-Type", "text/plain")
 
 			userID := auth.EnsureRandom()
-			rctx := context.WithValue(r.Context(), authKey, userID)
+			rctx := context.WithValue(r.Context(), auth.AuthKey, userID)
 			r = r.WithContext(rctx)
 
 			w := httptest.NewRecorder()
@@ -152,9 +149,6 @@ func TestShorten(t *testing.T) {
 		responseURL string
 	}
 
-	type ctxAuthKey string
-	const authKey ctxAuthKey = "auth"
-
 	var tests = []struct {
 		name        string
 		method      string
@@ -182,7 +176,7 @@ func TestShorten(t *testing.T) {
 			r := httptest.NewRequest(tt.method, "/", body)
 
 			userID := auth.EnsureRandom()
-			rctx := context.WithValue(r.Context(), authKey, userID)
+			rctx := context.WithValue(r.Context(), auth.AuthKey, userID)
 			r = r.WithContext(rctx)
 			r.Header.Set("Content-Type", "application/json")
 

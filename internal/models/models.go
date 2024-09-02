@@ -25,7 +25,7 @@ type Storage interface {
 	SaveBatch(ctx context.Context, urls []StorageURL, userID *uuid.UUID) ([]string, error)
 	Ping(ctx context.Context) error
 	GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]StorageURL, error)
-	DeleteUrlsBatch(ctx context.Context, userID *uuid.UUID, urls []string) error
+	DeleteBatch(ctx context.Context, userID *uuid.UUID, urls []string) error
 }
 
 type BatchShortenRequest struct {

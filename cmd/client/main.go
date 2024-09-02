@@ -24,7 +24,7 @@ func main() {
 	// читаем строку из консоли
 	long, err := reader.ReadString('\n')
 	if err != nil {
-		msg := err.Error()
+		var msg = err.Error()
 		log.Fatalf(msg)
 	}
 
@@ -33,7 +33,7 @@ func main() {
 
 	request, err := http.NewRequest(http.MethodPost, endpoint, strings.NewReader(data.Encode()))
 	if err != nil {
-		msg := err.Error()
+		var msg = err.Error()
 		log.Fatalf(msg)
 	}
 
@@ -44,7 +44,7 @@ func main() {
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
-		msg := err.Error()
+		var msg = err.Error()
 		log.Fatalf(msg)
 	}
 

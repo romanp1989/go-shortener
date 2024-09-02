@@ -79,7 +79,7 @@ func GetUserID(tokenString string) (*uuid.UUID, error) {
 	token, err := jwt.ParseWithClaims(tokenString, claims,
 		func(t *jwt.Token) (interface{}, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("Неизвестный алгоритм подписи: %v", t.Header["alg"])
+				return nil, fmt.Errorf("неизвестный алгоритм подписи: %v", t.Header["alg"])
 			}
 			return []byte(config.Options.FlagSecretKey), nil
 		})
