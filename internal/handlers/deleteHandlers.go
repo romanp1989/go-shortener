@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"github.com/gofrs/uuid"
 	"github.com/romanp1989/go-shortener/internal/auth"
 	"github.com/romanp1989/go-shortener/internal/logger"
@@ -68,17 +67,6 @@ func (d *DeleteBatch) DeleteURLs() http.HandlerFunc {
 		}
 
 		go d.add(userID, urls)
-
-		if err := d.storage.DeleteUrlsBatch(ctx, userID, urls); err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			var errAlreadyDeleted *storage.AlreadyDeleted
-			if errors.As(err, &errAlreadyDeleted) {
-				w.WriteHeader(http.StatusGone)
-			} else {
-				w.WriteHeader(http.StatusBadRequest)
-			}
-			return
-		}
 
 		w.Header().Set("content-type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
