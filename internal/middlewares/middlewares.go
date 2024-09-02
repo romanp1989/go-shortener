@@ -97,7 +97,7 @@ func AuthMiddlewareSet(h http.Handler) http.Handler {
 
 			auth.NewCookie(w, uid)
 		} else if cookie != nil {
-			uid, err = auth.GetUserID(cookie.Value)
+			uid, _ = auth.GetUserID(cookie.Value)
 		}
 
 		if uid == nil {
@@ -129,7 +129,7 @@ func AuthMiddlewareRead(h http.Handler) http.Handler {
 
 			auth.NewCookie(w, uid)
 		} else if cookie != nil {
-			uid, err = auth.GetUserID(cookie.Value)
+			uid, _ = auth.GetUserID(cookie.Value)
 		}
 
 		if uid == nil {

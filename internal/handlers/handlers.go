@@ -155,7 +155,7 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 
 			var errConflict *storage.URLConflictError
 			if errors.As(err, &errConflict) {
-				shortID = errConflict.URL
+				//shortID = errConflict.URL
 
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusConflict)

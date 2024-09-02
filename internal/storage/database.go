@@ -165,7 +165,7 @@ func (d *RDB) DeleteUrlsBatch(ctx context.Context, userID *uuid.UUID, urls []str
 	urlList := new(pgtype.VarcharArray)
 
 	if err := urlList.Set(urls); err != nil {
-		return fmt.Errorf("Ошибка при формировании списка url для удаления: %v", err)
+		return fmt.Errorf("ошибка при формировании списка url для удаления: %v", err)
 	}
 
 	query := `UPDATE urls

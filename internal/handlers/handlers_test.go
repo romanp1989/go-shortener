@@ -24,6 +24,9 @@ func TestEncode(t *testing.T) {
 		responseURL string
 	}
 
+	type ctxAuthKey string
+	const authKey ctxAuthKey = "auth"
+
 	tests := []struct {
 		name        string
 		method      string
@@ -60,7 +63,7 @@ func TestEncode(t *testing.T) {
 			r.Header.Set("Content-Type", "text/plain")
 
 			userID := auth.EnsureRandom()
-			rctx := context.WithValue(r.Context(), "auth", userID)
+			rctx := context.WithValue(r.Context(), authKey, userID)
 			r = r.WithContext(rctx)
 
 			w := httptest.NewRecorder()
@@ -149,6 +152,9 @@ func TestShorten(t *testing.T) {
 		responseURL string
 	}
 
+	type ctxAuthKey string
+	const authKey ctxAuthKey = "auth"
+
 	var tests = []struct {
 		name        string
 		method      string
@@ -176,7 +182,7 @@ func TestShorten(t *testing.T) {
 			r := httptest.NewRequest(tt.method, "/", body)
 
 			userID := auth.EnsureRandom()
-			rctx := context.WithValue(r.Context(), "auth", userID)
+			rctx := context.WithValue(r.Context(), authKey, userID)
 			r = r.WithContext(rctx)
 			r.Header.Set("Content-Type", "application/json")
 
@@ -229,7 +235,7 @@ func TestGzipCompression(t *testing.T) {
 		r.Header.Set("Accept-Encoding", "")
 
 		userID := auth.EnsureRandom()
-		token, err := auth.CreateToken(&userID)
+		token, _ := auth.CreateToken(&userID)
 
 		cookie := &http.Cookie{
 			Name:  "auth",
@@ -256,7 +262,7 @@ func TestGzipCompression(t *testing.T) {
 		r.Header.Set("Accept-Encoding", "gzip")
 
 		userID := auth.EnsureRandom()
-		token, err := auth.CreateToken(&userID)
+		token, _ := auth.CreateToken(&userID)
 
 		cookie := &http.Cookie{
 			Name:  "auth",

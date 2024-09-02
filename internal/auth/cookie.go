@@ -91,6 +91,6 @@ func GetUserID(tokenString string) (*uuid.UUID, error) {
 		return nil, err
 	}
 
-	fmt.Println("Токен валидный", claims.UserID)
+	fmt.Println("токен валидный", claims.UserID)
 	return claims.UserID, nil
 }

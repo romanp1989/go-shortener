@@ -5,14 +5,16 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-var ctxAuthKey = "auth"
+type ctxAuthKey string
+
+const authKey ctxAuthKey = "auth"
 
 func Context(parent context.Context, uid uuid.UUID) context.Context {
-	return context.WithValue(parent, ctxAuthKey, uid)
+	return context.WithValue(parent, authKey, uid)
 }
 
 func UIDFromContext(ctx context.Context) *uuid.UUID {
-	val := ctx.Value(ctxAuthKey)
+	val := ctx.Value(authKey)
 	if val == nil {
 		return nil
 	}
