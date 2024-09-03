@@ -36,7 +36,7 @@ func New(storage *storage.Storage) Handlers {
 func (h *Handlers) Encode() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		_, cancel := context.WithTimeout(ctx, 10*time.Second)
+		_, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
 
 		userID := auth.UIDFromContext(ctx)
@@ -68,6 +68,8 @@ func (h *Handlers) Encode() http.HandlerFunc {
 			if errors.As(err, &errConflict) {
 				shortID = errConflict.URL
 				w.WriteHeader(http.StatusConflict)
+				w.Write([]byte(fmt.Sprintf("%s/%s", config.Options.FlagShortURL, shortID)))
+				return
 			} else {
 				w.WriteHeader(http.StatusBadRequest)
 				return
@@ -131,10 +133,8 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 		logger.Log.Debug("decoding request")
 
 		ctx := r.Context()
-		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
-
-		w.Header().Set("Content-Type", "application/json")
 
 		userID := auth.UIDFromContext(ctx)
 		if userID == nil {
@@ -157,6 +157,16 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 		dec := json.NewDecoder(r.Body)
 		if err := dec.Decode(&req); err != nil {
 			logger.Log.Debug("cannot decode request JSON body", zap.Error(err))
+
+			shortenResponse := models.ShortenResponse{
+				Result: "cannot decode request JSON body",
+			}
+			enc := json.NewEncoder(w)
+			if err := enc.Encode(shortenResponse); err != nil {
+				logger.Log.Debug("Ошибка создания ответа", zap.Error(err))
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -168,16 +178,38 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 
 			var errConflict *storage.URLConflictError
 			if errors.As(err, &errConflict) {
-				//shortID = errConflict.URL
-
+				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusConflict)
+
+				shortenResponse := models.ShortenResponse{
+					Result: fmt.Sprintf("%s/%s", config.Options.FlagShortURL, shortID),
+				}
+				enc := json.NewEncoder(w)
+				if err := enc.Encode(shortenResponse); err != nil {
+					logger.Log.Debug("Ошибка создания ответа", zap.Error(err))
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+
 				return
 			} else {
+
 				w.WriteHeader(http.StatusBadRequest)
+
+				shortenResponse := models.ShortenResponse{
+					Result: "",
+				}
+				enc := json.NewEncoder(w)
+				if err := enc.Encode(shortenResponse); err != nil {
+					logger.Log.Debug("Ошибка создания ответа", zap.Error(err))
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+
 				return
 			}
 		} else {
-			//w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
 		}
 

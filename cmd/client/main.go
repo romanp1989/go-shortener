@@ -25,7 +25,7 @@ func main() {
 	long, err := reader.ReadString('\n')
 	if err != nil {
 		var msg = err.Error()
-		log.Fatalf(msg)
+		log.Fatalf("error %s", msg)
 	}
 
 	long = strings.TrimSuffix(long, "\n")
@@ -34,7 +34,7 @@ func main() {
 	request, err := http.NewRequest(http.MethodPost, endpoint, strings.NewReader(data.Encode()))
 	if err != nil {
 		var msg = err.Error()
-		log.Fatalf(msg)
+		log.Fatalf("error %s", msg)
 	}
 
 	// в заголовках запроса указываем кодировку
@@ -45,7 +45,7 @@ func main() {
 	response, err := client.Do(request)
 	if err != nil {
 		var msg = err.Error()
-		log.Fatalf(msg)
+		log.Fatalf("error %s", msg)
 	}
 
 	// выводим код ответа
