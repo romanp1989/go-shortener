@@ -33,7 +33,7 @@ func NewApp() *App {
 
 	logger.Log.Info("Running server on ", zap.String("port", config.Options.FlagRunPort))
 
-	s := storage.Init(config.Options.FlagFileStorage)
+	s := storage.Init(config.Options.FlagDatabaseDsn, config.Options.FlagFileStorage)
 
 	h := handlers.New(s)
 

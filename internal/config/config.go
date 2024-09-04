@@ -11,6 +11,7 @@ var Options struct {
 	FlagShortURL    string
 	FlagLogLevel    string
 	FlagFileStorage string
+	FlagDatabaseDsn string
 }
 
 type ConfigENV struct {
@@ -18,6 +19,7 @@ type ConfigENV struct {
 	BaseURL       string `env:"BASE_URL"`
 	LogLevel      string `env:"LOG_LEVEL"`
 	FileStorage   string `env:"FILE_STORAGE_PATH"`
+	DatabaseDsn   string `env:"DATABASE_DSN"`
 }
 
 func ParseFlags() error {
@@ -29,6 +31,7 @@ func ParseFlags() error {
 	flag.StringVar(&Options.FlagShortURL, "b", "http://localhost:8080", "address to run server")
 	flag.StringVar(&Options.FlagLogLevel, "l", "info", "log level")
 	flag.StringVar(&Options.FlagFileStorage, "f", "/tmp/shortener.txt", "file storage")
+	flag.StringVar(&Options.FlagDatabaseDsn, "d", "", "Database DSN")
 	flag.Parse()
 
 	var cfg ConfigENV
@@ -53,6 +56,10 @@ func ParseFlags() error {
 
 	if cfg.FileStorage != "" {
 		Options.FlagFileStorage = cfg.FileStorage
+	}
+
+	if cfg.DatabaseDsn != "" {
+		Options.FlagDatabaseDsn = cfg.DatabaseDsn
 	}
 
 	return nil

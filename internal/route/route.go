@@ -16,6 +16,8 @@ func New(h handlers.Handlers) *chi.Mux {
 	r.Post("/", h.Encode())
 	r.Get("/{id}", h.Decode())
 	r.Post("/api/shorten", h.Shorten())
+	r.Get("/ping", h.PingDB())
+	r.Post("/api/shorten/batch", h.SaveBatch())
 
 	return r
 }

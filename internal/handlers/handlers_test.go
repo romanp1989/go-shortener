@@ -49,7 +49,7 @@ func TestEncode(t *testing.T) {
 		},
 	}
 	config.ParseFlags()
-	s := storage.Init(config.Options.FlagFileStorage)
+	s := storage.Init(config.Options.FlagDatabaseDsn, config.Options.FlagFileStorage)
 	h := New(s)
 
 	for _, tt := range tests {
@@ -104,14 +104,14 @@ func TestDecode(t *testing.T) {
 		},
 	}
 
-	s := storage.Init("")
+	s := storage.Init("", "")
 	h := New(s)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			hashID := shortURL(tt.want.responseURL)
 			if tt.want.responseURL != "" {
-				s.SaveURL(tt.want.responseURL, hashID)
+				s.SaveURL(context.Background(), tt.want.responseURL, hashID)
 			}
 			body := httptest.NewRequest(http.MethodGet, "/{id}", nil)
 			w := httptest.NewRecorder()
@@ -161,7 +161,7 @@ func TestShorten(t *testing.T) {
 	}
 
 	config.ParseFlags()
-	s := storage.Init(config.Options.FlagFileStorage)
+	s := storage.Init(config.Options.FlagDatabaseDsn, config.Options.FlagFileStorage)
 	h := New(s)
 
 	for _, tt := range tests {
@@ -192,7 +192,7 @@ func TestShorten(t *testing.T) {
 
 func TestGzipCompression(t *testing.T) {
 	config.ParseFlags()
-	s := storage.Init(config.Options.FlagFileStorage)
+	s := storage.Init(config.Options.FlagDatabaseDsn, config.Options.FlagFileStorage)
 	h := New(s)
 
 	handler := compress.GzipMiddleware(h.Encode())
