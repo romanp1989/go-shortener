@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"github.com/gofrs/uuid"
 	"github.com/romanp1989/go-shortener/internal/models"
 	"io"
 	"log"
@@ -28,7 +29,7 @@ func NewFileStorage(path string) (*FileStorage, error) {
 	return &FileStorage{FileStoragePath: path}, nil
 }
 
-func (s *FileStorage) Save(ctx context.Context, originalURL string, shortURL string) (string, error) {
+func (s *FileStorage) Save(ctx context.Context, originalURL string, shortURL string, userID *uuid.UUID) (string, error) {
 	var urlStorage models.StorageURL
 
 	file, err := os.OpenFile(s.FileStoragePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -39,7 +40,7 @@ func (s *FileStorage) Save(ctx context.Context, originalURL string, shortURL str
 
 	defer file.Close()
 
-	urlStorage.OriginalURL, urlStorage.ShortURL = originalURL, shortURL
+	urlStorage.OriginalURL, urlStorage.ShortURL, urlStorage.UserID = originalURL, shortURL, userID
 	encoder := json.NewEncoder(file)
 
 	if err = encoder.Encode(urlStorage); err != nil {
@@ -93,8 +94,35 @@ func (s *FileStorage) Get(inputURL string) (string, error) {
 	return "", nil
 }
 
-func (s *FileStorage) SaveBatch(ctx context.Context, urls []models.StorageURL) ([]string, error) {
-	panic("don't implement method")
+func (s *FileStorage) SaveBatch(ctx context.Context, urls []models.StorageURL, userID *uuid.UUID) ([]string, error) {
+	var urlStorage models.StorageURL
+
+	file, err := os.OpenFile(s.FileStoragePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Printf("Ошибка при открытии: %s", err)
+		return nil, err
+	}
+
+	defer file.Close()
+
+	for _, url := range urls {
+		urlStorage.OriginalURL, urlStorage.ShortURL, urlStorage.UserID = url.OriginalURL, url.ShortURL, userID
+		encoder := json.NewEncoder(file)
+
+		if err = encoder.Encode(urlStorage); err != nil {
+			return nil, err
+		}
+	}
+
+	return nil, nil
+}
+
+func (s *FileStorage) DeleteBatch(ctx context.Context, userID *uuid.UUID, urls []string) error {
+	return nil
+}
+
+func (s *FileStorage) GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]models.StorageURL, error) {
+	return nil, nil
 }
 
 func (s *FileStorage) Ping(ctx context.Context) error {

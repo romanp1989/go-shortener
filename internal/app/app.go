@@ -37,7 +37,12 @@ func NewApp() *App {
 
 	h := handlers.New(s)
 
-	r := route.New(h)
+	deleteHanlder, err := handlers.NewDelete(s)
+	if err != nil {
+		logger.Log.Fatal(err.Error())
+	}
+
+	r := route.New(h, deleteHanlder)
 
 	return &App{
 		flagRunPort: config.Options.FlagRunPort,

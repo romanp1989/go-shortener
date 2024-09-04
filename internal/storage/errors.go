@@ -24,3 +24,17 @@ func NewURLConflictError(url string, err error) error {
 		Err: err,
 	}
 }
+
+type AlreadyDeleted struct {
+	URL string
+}
+
+func (ad *AlreadyDeleted) Error() string {
+	return fmt.Sprintf("URLs %v уже удален", ad.URL)
+}
+
+func NewAlreadyDeletedError(url string) error {
+	return &AlreadyDeleted{
+		URL: url,
+	}
+}

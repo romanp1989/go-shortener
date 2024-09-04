@@ -5,15 +5,19 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/pgtype"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/romanp1989/go-shortener/internal/models"
 	"log"
+	"sync"
 )
 
 type RDB struct {
 	db *sql.DB
+	mu sync.RWMutex
 }
 
 func NewDB(DBPath string) *RDB {
@@ -24,6 +28,7 @@ func NewDB(DBPath string) *RDB {
 
 	createUrlsTableQuery := `CREATE TABLE IF NOT EXISTS urls(
 		id serial primary key,
+		user_id uuid not null,
 		short_url varchar(255) not null,
 		original_url varchar(255) not null);
                                
@@ -34,19 +39,29 @@ func NewDB(DBPath string) *RDB {
 		return nil
 	}
 
+	addColumnDeletedFlag := `ALTER TABLE urls ADD COLUMN IF NOT EXISTS deleted_flag boolean`
+	_, err = db.Exec(addColumnDeletedFlag)
+	if err != nil {
+		log.Fatal(err)
+		return nil
+	}
+
 	return &RDB{
 		db: db,
 	}
 }
 
-func (d *RDB) Save(ctx context.Context, originalURL string, shortURL string) (string, error) {
+func (d *RDB) Save(ctx context.Context, originalURL string, shortURL string, userID *uuid.UUID) (string, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	var insertedURL string
 	var pgErr *pgconn.PgError
 
-	insertQuery := `INSERT INTO urls(short_url, original_url) 
-VALUES ($1, $2)
+	insertQuery := `INSERT INTO urls(short_url, original_url, user_id) 
+VALUES ($1, $2, $3)
 RETURNING short_url`
-	err := d.db.QueryRowContext(ctx, insertQuery, shortURL, originalURL).Scan(&insertedURL)
+	err := d.db.QueryRowContext(ctx, insertQuery, shortURL, originalURL, userID).Scan(&insertedURL)
 	if err != nil {
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
 			err = ErrConflict
@@ -59,13 +74,18 @@ RETURNING short_url`
 
 func (d *RDB) Get(inputURL string) (string, error) {
 	var short, original string
+	var deletedFlag sql.NullBool
 
-	row := d.db.QueryRowContext(context.Background(), "SELECT short_url, original_url FROM urls WHERE short_url = $1 or original_url = $1", inputURL)
-	if err := row.Scan(&short, &original); err != nil {
+	row := d.db.QueryRowContext(context.Background(), "SELECT short_url, original_url, deleted_flag FROM urls WHERE short_url = $1 or original_url = $1", inputURL)
+	if err := row.Scan(&short, &original, &deletedFlag); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", nil
 		}
 		return "", fmt.Errorf("cannot scan row: %w", err)
+	}
+
+	if deletedFlag.Bool {
+		return "", NewAlreadyDeletedError(inputURL)
 	}
 
 	if inputURL == short {
@@ -79,7 +99,10 @@ func (d *RDB) Get(inputURL string) (string, error) {
 	return "", nil
 }
 
-func (d *RDB) SaveBatch(ctx context.Context, urls []models.StorageURL) ([]string, error) {
+func (d *RDB) SaveBatch(ctx context.Context, urls []models.StorageURL, userID *uuid.UUID) ([]string, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
 	tx, err := d.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -95,14 +118,14 @@ func (d *RDB) SaveBatch(ctx context.Context, urls []models.StorageURL) ([]string
 		if i > 0 {
 			insertValues += ","
 		}
-		insertValues += fmt.Sprintf("($%d, $%d)", paramNumber+1, paramNumber+2)
+		insertValues += fmt.Sprintf("($%d, $%d, '%v')", paramNumber+1, paramNumber+2, userID)
 
 		args = append(args, url.ShortURL)
 		args = append(args, url.OriginalURL)
 		paramNumber += 2
 	}
 
-	query := `INSERT INTO urls (short_url, original_url) 
+	query := `INSERT INTO urls (short_url, original_url, user_id) 
 			 	VALUES ` + insertValues + `
 				ON CONFLICT (original_url) DO UPDATE SET short_url = EXCLUDED.short_url, original_url = EXCLUDED.original_url
 				RETURNING short_url`
@@ -132,6 +155,64 @@ func (d *RDB) SaveBatch(ctx context.Context, urls []models.StorageURL) ([]string
 	tx.Commit()
 
 	return shortURLs, nil
+}
+
+func (d *RDB) DeleteBatch(ctx context.Context, userID *uuid.UUID, urls []string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	tx, err := d.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	urlList := new(pgtype.VarcharArray)
+
+	if err := urlList.Set(urls); err != nil {
+		return fmt.Errorf("ошибка при формировании списка url для удаления: %v", err)
+	}
+
+	query := `UPDATE urls
+			SET deleted_flag = true
+			WHERE user_id = $1 and short_url = ANY($2)`
+	res, err := d.db.ExecContext(ctx, query, userID, urlList)
+	log.Print(res)
+
+	if err != nil {
+		return err
+	}
+
+	tx.Commit()
+
+	return nil
+}
+
+func (d *RDB) GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]models.StorageURL, error) {
+	storageURLs := make([]models.StorageURL, 0)
+	query := `SELECT short_url, original_url FROM urls WHERE user_id = $1 and length(short_url) > 0`
+	rows, err := d.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		var store models.StorageURL
+		err = rows.Scan(&store.ShortURL, &store.OriginalURL)
+		if err != nil {
+			if !errors.Is(err, sql.ErrNoRows) {
+				return nil, err
+			}
+			return nil, nil
+		}
+		storageURLs = append(storageURLs, store)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+	return storageURLs, nil
 }
 
 func (d *RDB) Ping(ctx context.Context) error {
