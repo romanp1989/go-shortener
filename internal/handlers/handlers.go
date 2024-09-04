@@ -112,6 +112,11 @@ func (h *Handlers) Decode() http.HandlerFunc {
 
 		fullURL, err := h.storage.GetURL(id)
 		if err != nil {
+			var errURLDeleted *storage.AlreadyDeleted
+			if errors.As(err, &errURLDeleted) {
+				w.WriteHeader(http.StatusGone)
+				return
+			}
 			logger.Log.Debug("error get url response", zap.Error(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -236,7 +241,7 @@ func (h *Handlers) SaveBatch() http.HandlerFunc {
 		var batchReq []models.BatchShortenRequest
 
 		ctx := r.Context()
-		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 		defer cancel()
 
 		userID := auth.UIDFromContext(ctx)

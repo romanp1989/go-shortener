@@ -28,9 +28,9 @@ type DeleteBatch struct {
 func NewDelete(store *storage.Storage) (*DeleteBatch, error) {
 	d := &DeleteBatch{
 		storage:   store,
-		inChan:    make(chan itemDelete, 1024),
+		inChan:    make(chan itemDelete, 100),
 		closeChan: make(chan struct{}),
-		size:      500,
+		size:      100,
 	}
 
 	for i := 0; i < 2; i++ {
@@ -90,10 +90,6 @@ func (d *DeleteBatch) add(userID *uuid.UUID, urls []string) {
 	}
 }
 
-func (d *DeleteBatch) close() {
-	close(d.closeChan)
-}
-
 func (d *DeleteBatch) process() {
 	for {
 		select {
@@ -105,7 +101,6 @@ func (d *DeleteBatch) process() {
 			if err := d.storage.DeleteUrlsBatch(context.Background(), batch.userID, batch.urls); err != nil {
 				logger.Log.Error("Ошибка при удалении url: %v, %v", zap.String("userID", batch.userID.String()), zap.Error(err))
 			}
-
 		case <-d.closeChan:
 			close(d.inChan)
 			logger.Log.Debug("Закрыт канал для удаления url")

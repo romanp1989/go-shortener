@@ -74,13 +74,18 @@ RETURNING short_url`
 
 func (d *RDB) Get(inputURL string) (string, error) {
 	var short, original string
+	var deletedFlag sql.NullBool
 
-	row := d.db.QueryRowContext(context.Background(), "SELECT short_url, original_url FROM urls WHERE short_url = $1 or original_url = $1", inputURL)
-	if err := row.Scan(&short, &original); err != nil {
+	row := d.db.QueryRowContext(context.Background(), "SELECT short_url, original_url, deleted_flag FROM urls WHERE short_url = $1 or original_url = $1", inputURL)
+	if err := row.Scan(&short, &original, &deletedFlag); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", nil
 		}
 		return "", fmt.Errorf("cannot scan row: %w", err)
+	}
+
+	if deletedFlag.Bool {
+		return "", NewAlreadyDeletedError(inputURL)
 	}
 
 	if inputURL == short {
