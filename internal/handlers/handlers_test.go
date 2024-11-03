@@ -5,8 +5,9 @@ import (
 	"compress/gzip"
 	"context"
 	"github.com/go-chi/chi/v5"
-	"github.com/romanp1989/go-shortener/internal/compress"
+	"github.com/romanp1989/go-shortener/internal/auth"
 	"github.com/romanp1989/go-shortener/internal/config"
+	"github.com/romanp1989/go-shortener/internal/middlewares"
 	"github.com/romanp1989/go-shortener/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -57,6 +58,10 @@ func TestEncode(t *testing.T) {
 			body := strings.NewReader(tt.requestBody)
 			r := httptest.NewRequest(tt.method, "/", body)
 			r.Header.Set("Content-Type", "text/plain")
+
+			userID := auth.EnsureRandom()
+			rctx := context.WithValue(r.Context(), auth.AuthKey, userID)
+			r = r.WithContext(rctx)
 
 			w := httptest.NewRecorder()
 
@@ -110,8 +115,9 @@ func TestDecode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			hashID := shortURL(tt.want.responseURL)
+			userID := auth.EnsureRandom()
 			if tt.want.responseURL != "" {
-				s.SaveURL(context.Background(), tt.want.responseURL, hashID)
+				s.SaveURL(context.Background(), tt.want.responseURL, hashID, &userID)
 			}
 			body := httptest.NewRequest(http.MethodGet, "/{id}", nil)
 			w := httptest.NewRecorder()
@@ -168,6 +174,10 @@ func TestShorten(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			body := strings.NewReader(tt.requestBody)
 			r := httptest.NewRequest(tt.method, "/", body)
+
+			userID := auth.EnsureRandom()
+			rctx := context.WithValue(r.Context(), auth.AuthKey, userID)
+			r = r.WithContext(rctx)
 			r.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
@@ -195,7 +205,7 @@ func TestGzipCompression(t *testing.T) {
 	s := storage.Init(config.Options.FlagDatabaseDsn, config.Options.FlagFileStorage)
 	h := New(s)
 
-	handler := compress.GzipMiddleware(h.Encode())
+	handler := middlewares.AuthMiddlewareSet(middlewares.GzipMiddleware(h.Encode()))
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -218,6 +228,16 @@ func TestGzipCompression(t *testing.T) {
 		r.Header.Set("Content-Encoding", "gzip")
 		r.Header.Set("Accept-Encoding", "")
 
+		userID := auth.EnsureRandom()
+		token, _ := auth.CreateToken(&userID)
+
+		cookie := &http.Cookie{
+			Name:  "auth",
+			Value: token,
+			Path:  "/",
+		}
+		r.AddCookie(cookie)
+
 		resp, err := http.DefaultClient.Do(r)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusCreated, resp.StatusCode)
@@ -234,6 +254,16 @@ func TestGzipCompression(t *testing.T) {
 		r := httptest.NewRequest("POST", srv.URL, buf)
 		r.RequestURI = ""
 		r.Header.Set("Accept-Encoding", "gzip")
+
+		userID := auth.EnsureRandom()
+		token, _ := auth.CreateToken(&userID)
+
+		cookie := &http.Cookie{
+			Name:  "auth",
+			Value: token,
+			Path:  "/",
+		}
+		r.AddCookie(cookie)
 
 		resp, err := http.DefaultClient.Do(r)
 		require.NoError(t, err)

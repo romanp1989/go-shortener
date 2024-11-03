@@ -3,18 +3,17 @@ package logger
 import (
 	"go.uber.org/zap"
 	"net/http"
-	"time"
 )
 
 type (
-	responseData struct {
-		status int
-		size   int
+	ResponseData struct {
+		Status int
+		Size   int
 	}
 
-	loggingResponseWriter struct {
+	LoggingResponseWriter struct {
 		http.ResponseWriter
-		responseData *responseData
+		ResponseData *ResponseData
 	}
 )
 
@@ -41,46 +40,15 @@ func Initialize(level string) error {
 	return nil
 }
 
-func (r *loggingResponseWriter) Write(b []byte) (int, error) {
+func (r *LoggingResponseWriter) Write(b []byte) (int, error) {
 	// записываем ответ, используя оригинальный http.ResponseWriter
 	size, err := r.ResponseWriter.Write(b)
-	r.responseData.size += size // захватываем размер
+	r.ResponseData.Size += size // захватываем размер
 	return size, err
 }
 
-func (r *loggingResponseWriter) WriteHeader(statusCode int) {
+func (r *LoggingResponseWriter) WriteHeader(statusCode int) {
 	// записываем код статуса, используя оригинальный http.ResponseWriter
 	r.ResponseWriter.WriteHeader(statusCode)
-	r.responseData.status = statusCode // захватываем код статуса
-}
-
-func WithLogging(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-
-		Log.Info("Request info",
-			zap.String("uri", r.RequestURI),
-			zap.String("method", r.Method),
-		)
-
-		responseData := &responseData{
-			status: 0,
-			size:   0,
-		}
-		lw := loggingResponseWriter{
-			ResponseWriter: w, // встраиваем оригинальный http.ResponseWriter
-			responseData:   responseData,
-		}
-
-		//Запуск оригинального handler
-		h.ServeHTTP(&lw, r) // внедряем реализацию http.ResponseWriter
-
-		duration := time.Since(start)
-
-		Log.Info("Response info",
-			zap.Int("status", responseData.status), // получаем перехваченный код статуса ответа
-			zap.Duration("duration", duration),
-			zap.Int("size", responseData.size), // получаем перехваченный размер ответа
-		)
-	})
+	r.ResponseData.Status = statusCode // захватываем код статуса
 }

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"github.com/gofrs/uuid"
 	"github.com/romanp1989/go-shortener/internal/models"
 	"log"
 )
@@ -32,12 +33,20 @@ func (s *Storage) GetURL(inputURL string) (string, error) {
 	return url, err
 }
 
-func (s *Storage) SaveURL(ctx context.Context, originalURL string, shortURL string) (string, error) {
-	return s.storage.Save(ctx, originalURL, shortURL)
+func (s *Storage) SaveURL(ctx context.Context, originalURL string, shortURL string, userID *uuid.UUID) (string, error) {
+	return s.storage.Save(ctx, originalURL, shortURL, userID)
 }
 
-func (s *Storage) SaveBatchURL(ctx context.Context, urls []models.StorageURL) ([]string, error) {
-	return s.storage.SaveBatch(ctx, urls)
+func (s *Storage) SaveBatchURL(ctx context.Context, urls []models.StorageURL, userID *uuid.UUID) ([]string, error) {
+	return s.storage.SaveBatch(ctx, urls, userID)
+}
+
+func (s *Storage) GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]models.StorageURL, error) {
+	return s.storage.GetAllUrlsByUser(ctx, userID)
+}
+
+func (s *Storage) DeleteUrlsBatch(ctx context.Context, userID *uuid.UUID, urls []string) error {
+	return s.storage.DeleteBatch(ctx, userID, urls)
 }
 
 func (s *Storage) Ping(ctx context.Context) error {

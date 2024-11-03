@@ -2,22 +2,28 @@ package route
 
 import (
 	"github.com/go-chi/chi/v5"
-	"github.com/romanp1989/go-shortener/internal/compress"
 	"github.com/romanp1989/go-shortener/internal/handlers"
-	"github.com/romanp1989/go-shortener/internal/logger"
+	"github.com/romanp1989/go-shortener/internal/middlewares"
 )
 
-func New(h handlers.Handlers) *chi.Mux {
+func New(h handlers.Handlers, delete *handlers.DeleteBatch) *chi.Mux {
 	r := chi.NewRouter()
 
-	r.Use(compress.GzipMiddleware)
-	r.Use(logger.WithLogging)
+	r.Use(middlewares.GzipMiddleware)
+	r.Use(middlewares.WithLogging)
 
-	r.Post("/", h.Encode())
+	r.With(middlewares.AuthMiddlewareSet).Post("/", h.Encode())
 	r.Get("/{id}", h.Decode())
-	r.Post("/api/shorten", h.Shorten())
 	r.Get("/ping", h.PingDB())
-	r.Post("/api/shorten/batch", h.SaveBatch())
+	r.Route("/api", func(r chi.Router) {
+		r.With(middlewares.AuthMiddlewareRead).Get("/user/urls", h.GetURLs())
+		r.With(middlewares.AuthMiddlewareRead).Delete("/user/urls", delete.DeleteURLs())
+		r.Route("/shorten", func(r chi.Router) {
+			r.With(middlewares.AuthMiddlewareSet).Post("/", h.Shorten())
+			r.With(middlewares.AuthMiddlewareSet).Post("/batch", h.SaveBatch())
+		})
+
+	})
 
 	return r
 }
