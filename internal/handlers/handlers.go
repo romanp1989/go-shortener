@@ -22,12 +22,10 @@ import (
 )
 
 type Handlers struct {
-	storage *storage.Storage
+	storage storage.Storage
 }
 
-var urlStore = make(map[string]string)
-
-func New(storage *storage.Storage) Handlers {
+func New(storage storage.Storage) Handlers {
 	return Handlers{
 		storage: storage,
 	}
@@ -143,15 +141,15 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 
 		userID := auth.UIDFromContext(ctx)
 		if userID == nil {
-			shortenResponse := models.ShortenResponse{
-				Result: "Пользователь неавторизован",
-			}
-			enc := json.NewEncoder(w)
-			if err := enc.Encode(shortenResponse); err != nil {
-				logger.Log.Debug("Ошибка создания ответа", zap.Error(err))
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
+			//shortenResponse := models.ShortenResponse{
+			//	Result: "Пользователь неавторизован",
+			//}
+			//enc := json.NewEncoder(w)
+			//if err := enc.Encode(shortenResponse); err != nil {
+			//	logger.Log.Debug("Ошибка создания ответа", zap.Error(err))
+			//	w.WriteHeader(http.StatusBadRequest)
+			//	return
+			//}
 
 			w.WriteHeader(http.StatusUnauthorized)
 
@@ -163,15 +161,15 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 		if err := dec.Decode(&req); err != nil {
 			logger.Log.Debug("cannot decode request JSON body", zap.Error(err))
 
-			shortenResponse := models.ShortenResponse{
-				Result: "cannot decode request JSON body",
-			}
-			enc := json.NewEncoder(w)
-			if err := enc.Encode(shortenResponse); err != nil {
-				logger.Log.Debug("Ошибка создания ответа", zap.Error(err))
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
+			//shortenResponse := models.ShortenResponse{
+			//	Result: "cannot decode request JSON body",
+			//}
+			//enc := json.NewEncoder(w)
+			//if err := enc.Encode(shortenResponse); err != nil {
+			//	logger.Log.Debug("Ошибка создания ответа", zap.Error(err))
+			//	w.WriteHeader(http.StatusBadRequest)
+			//	return
+			//}
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -259,6 +257,11 @@ func (h *Handlers) SaveBatch() http.HandlerFunc {
 		var shortURLs []models.StorageURL
 
 		for _, value := range batchReq {
+			if _, err := url.ParseRequestURI(value.OriginalURL); err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
 			hashID, err := h.storage.GetURL(value.OriginalURL)
 			if err != nil {
 				logger.Log.Debug("error get url response", zap.Error(err))
