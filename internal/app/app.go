@@ -11,16 +11,19 @@ import (
 	"net/http"
 )
 
+// App Application configuration
 type App struct {
 	flagRunPort string
 	chi         *chi.Mux
 }
 
+// RunServer run application server
 func RunServer() error {
 	server := NewApp()
 	return server.ListenAndServe()
 }
 
+// NewApp Create Application configuration
 func NewApp() *http.Server {
 	err := config.ParseFlags()
 	if err != nil {

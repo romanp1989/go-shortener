@@ -15,11 +15,13 @@ import (
 	"sync"
 )
 
+// DBStorage DB storage
 type DBStorage struct {
 	db *sql.DB
 	mu sync.RWMutex
 }
 
+// NewDB factory for create DB storage
 func NewDB(DBPath string) *DBStorage {
 	db, err := sql.Open("pgx", DBPath)
 	if err != nil {
@@ -51,6 +53,7 @@ func NewDB(DBPath string) *DBStorage {
 	}
 }
 
+// Save function for save URL in DB
 func (d *DBStorage) Save(ctx context.Context, originalURL string, shortURL string, userID *uuid.UUID) (string, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -72,6 +75,7 @@ RETURNING short_url`
 	return insertedURL, nil
 }
 
+// Get function for get URL from DB
 func (d *DBStorage) Get(inputURL string) (string, error) {
 	var short, original string
 	var deletedFlag sql.NullBool
@@ -99,6 +103,7 @@ func (d *DBStorage) Get(inputURL string) (string, error) {
 	return "", nil
 }
 
+// SaveBatch function for saving URL list
 func (d *DBStorage) SaveBatch(ctx context.Context, urls []models.StorageURL, userID *uuid.UUID) ([]string, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -157,6 +162,7 @@ func (d *DBStorage) SaveBatch(ctx context.Context, urls []models.StorageURL, use
 	return shortURLs, nil
 }
 
+// DeleteBatch function for delete URLs list
 func (d *DBStorage) DeleteBatch(ctx context.Context, userID *uuid.UUID, urls []string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -188,6 +194,7 @@ func (d *DBStorage) DeleteBatch(ctx context.Context, userID *uuid.UUID, urls []s
 	return nil
 }
 
+// GetAllUrlsByUser function for get all user's URLs
 func (d *DBStorage) GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]models.StorageURL, error) {
 	storageURLs := make([]models.StorageURL, 0)
 	query := `SELECT short_url, original_url FROM urls WHERE user_id = $1 and length(short_url) > 0`
@@ -215,6 +222,7 @@ func (d *DBStorage) GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]
 	return storageURLs, nil
 }
 
+// Ping function for ping DB connection
 func (d *DBStorage) Ping(ctx context.Context) error {
 	if err := d.db.PingContext(ctx); err != nil {
 		return err

@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// PingDb function for ping server connection
 func (h *Handlers) PingDB() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)

@@ -5,20 +5,24 @@ import (
 	"github.com/gofrs/uuid"
 )
 
+// ShortenRequest structure for Shorten handler request
 type ShortenRequest struct {
 	URL string `json:"url"`
 }
 
+// ShortenResponse structure for Shorten handler response
 type ShortenResponse struct {
 	Result string `json:"result"`
 }
 
+// StorageURL structure for save URLs in DB
 type StorageURL struct {
 	UserID      *uuid.UUID `json:"user_id"`
 	OriginalURL string     `json:"original_url"`
 	ShortURL    string     `json:"short_url"`
 }
 
+// Storage interface for storage
 type Storage interface {
 	Save(ctx context.Context, OriginalURL string, ShortURL string, userID *uuid.UUID) (string, error)
 	Get(inputURL string) (string, error)
@@ -28,11 +32,13 @@ type Storage interface {
 	DeleteBatch(ctx context.Context, userID *uuid.UUID, urls []string) error
 }
 
+// BatchShortenRequest structure for batch save URLs handler request
 type BatchShortenRequest struct {
 	CorrelationID string `json:"correlation_id"`
 	OriginalURL   string `json:"original_url"`
 }
 
+// BatchShortenResponse structure for batch save URLs handler response
 type BatchShortenResponse struct {
 	CorrelationID string `json:"correlation_id"`
 	ShortURL      string `json:"short_url"`

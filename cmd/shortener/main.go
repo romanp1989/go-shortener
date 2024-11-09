@@ -6,6 +6,7 @@ import (
 	//_ "net/http/pprof"
 )
 
+// main Main function for launch application
 func main() {
 	//go func() {
 	//	log.Println(http.ListenAndServe(":6060", nil))

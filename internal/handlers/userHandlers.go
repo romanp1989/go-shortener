@@ -13,6 +13,11 @@ import (
 	"time"
 )
 
+// GetURLs handler for creating a shortened URL based on the original one
+// @Accept string user uuid
+// @Success 200 {json} list of user's URLs
+// @Failure 204 no content if users haven't URLs
+// @Failure 401 error if user unauthorized
 func (h *Handlers) GetURLs() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 

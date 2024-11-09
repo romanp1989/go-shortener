@@ -6,20 +6,23 @@ import (
 )
 
 type (
+	// ResponseData structure for response data
 	ResponseData struct {
 		Status int
 		Size   int
 	}
 
+	// LoggingResponseWriter log writer
 	LoggingResponseWriter struct {
 		http.ResponseWriter
 		ResponseData *ResponseData
 	}
 )
 
+// Log logger
 var Log *zap.Logger = zap.NewNop()
 
-// Initialize инициализирует синглтон логера с необходимым уровнем логирования.
+// Initialize initializes the logger singleton with the required logging level
 func Initialize(level string) error {
 	// преобразуем текстовый уровень логирования в zap.AtomicLevel
 	lvl, err := zap.ParseAtomicLevel(level)
@@ -40,15 +43,15 @@ func Initialize(level string) error {
 	return nil
 }
 
+// Write function logging the response
 func (r *LoggingResponseWriter) Write(b []byte) (int, error) {
-	// записываем ответ, используя оригинальный http.ResponseWriter
 	size, err := r.ResponseWriter.Write(b)
 	r.ResponseData.Size += size // захватываем размер
 	return size, err
 }
 
+// Write function logging the response status code
 func (r *LoggingResponseWriter) WriteHeader(statusCode int) {
-	// записываем код статуса, используя оригинальный http.ResponseWriter
 	r.ResponseWriter.WriteHeader(statusCode)
 	r.ResponseData.Status = statusCode // захватываем код статуса
 }

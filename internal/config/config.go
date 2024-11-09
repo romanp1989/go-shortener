@@ -6,6 +6,7 @@ import (
 	"log"
 )
 
+// Options console flag configuration struct
 var Options struct {
 	FlagRunPort     string
 	FlagShortURL    string
@@ -15,6 +16,7 @@ var Options struct {
 	FlagSecretKey   string
 }
 
+// ConfigENV env configuration params
 type ConfigENV struct {
 	ServerAddress string `env:"SERVER_ADDRESS"`
 	BaseURL       string `env:"BASE_URL"`
@@ -24,6 +26,7 @@ type ConfigENV struct {
 	SecretKey     string `env:"SECRET_KEY"`
 }
 
+// ParseFlags function for parse application run flags
 func ParseFlags() error {
 	if Options.FlagRunPort != "" {
 		return nil

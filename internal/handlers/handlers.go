@@ -21,16 +21,24 @@ import (
 	"time"
 )
 
+// Handlers handlers
 type Handlers struct {
 	storage storage.Storage
 }
 
+// New Factory for create handlers
 func New(storage storage.Storage) Handlers {
 	return Handlers{
 		storage: storage,
 	}
 }
 
+// Encode handler for creating a shortened URL based on the original one
+// @Accept string
+// @Success 201 {string} short URL
+// @Failure 400 bad request
+// @Failure 401 error if user unauthorized
+// @Failure 409 error if URL already exists in DB
 func (h *Handlers) Encode() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -94,6 +102,13 @@ func shortURL(url string) string {
 	return encoded
 }
 
+// Decode handler for getting the original URL from short URL
+// @Accept string
+// @Success 307 {string} redirect to result URL
+// @Failure 400 bad request
+// @Failure 410 error if URL already deleted
+// @Failure 404 error if URL not found
+// @Failure 409 error if URL already exists in DB
 func (h *Handlers) Decode() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -130,6 +145,12 @@ func (h *Handlers) Decode() http.HandlerFunc {
 	return http.HandlerFunc(fn)
 }
 
+// Shorten handler for creating a shortened URL based on the original one
+// @Accept json
+// @Success 201 {json} short URL json
+// @Failure 500 internal error if can't decode request body
+// @Failure 401 error if user unauthorized
+// @Failure 409 error if URL already exists in DB
 func (h *Handlers) Shorten() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 
@@ -234,6 +255,11 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 	return http.HandlerFunc(fn)
 }
 
+// SaveBatch handler for creating a shortened URL based on the original one
+// @Accept json
+// @Success 201 {json} list of short URLs json
+// @Failure 400 bad request error if can't decode request body
+// @Failure 401 error if user unauthorized
 func (h *Handlers) SaveBatch() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		var batchReq []models.BatchShortenRequest
