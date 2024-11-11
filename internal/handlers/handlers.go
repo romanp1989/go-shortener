@@ -65,7 +65,7 @@ func (h *Handlers) Encode() http.HandlerFunc {
 			return
 		}
 
-		hashID := shortURL(stringURI)
+		hashID := ShortURL(stringURI)
 		shortID, err := h.storage.SaveURL(r.Context(), stringURI, hashID, userID)
 		if err != nil {
 			logger.Log.Debug("Ошибка добавления данных", zap.Error(err))
@@ -94,7 +94,7 @@ func (h *Handlers) Encode() http.HandlerFunc {
 	return http.HandlerFunc(fn)
 }
 
-func shortURL(url string) string {
+func ShortURL(url string) string {
 	sum := md5.Sum([]byte(url))
 	encoded := base64.StdEncoding.EncodeToString(sum[:])
 	encoded = strings.Replace(encoded, "/", "", -1)[:8]
@@ -195,7 +195,7 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 			return
 		}
 
-		hashID := shortURL(req.URL)
+		hashID := ShortURL(req.URL)
 		shortID, err := h.storage.SaveURL(r.Context(), req.URL, hashID, userID)
 		if err != nil {
 			logger.Log.Debug("Ошибка добавления данных", zap.Error(err))
@@ -296,7 +296,7 @@ func (h *Handlers) SaveBatch() http.HandlerFunc {
 			}
 
 			if hashID == "" {
-				hashID = shortURL(value.OriginalURL)
+				hashID = ShortURL(value.OriginalURL)
 				shortURLs = append(shortURLs, models.StorageURL{
 					OriginalURL: value.OriginalURL,
 					ShortURL:    hashID,

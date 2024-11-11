@@ -148,11 +148,11 @@ func TestDecode(t *testing.T) {
 	}
 
 	firstOriginalURL := "https://ya.ru"
-	firstShort := shortURL("https://ya.ru")
+	firstShort := ShortURL("https://ya.ru")
 
-	secondShort := shortURL("https://yandex.ru")
-	thirdShort := shortURL("https://dzen.ru")
-	fourthShort := shortURL("https://mail.ru")
+	secondShort := ShortURL("https://yandex.ru")
+	thirdShort := ShortURL("https://dzen.ru")
+	fourthShort := ShortURL("https://mail.ru")
 
 	tests := []struct {
 		name     string
@@ -590,4 +590,9 @@ func TestGzipCompression(t *testing.T) {
 
 		require.Equal(t, successBody, string(b))
 	})
+}
+func BenchmarkHandlers_ShortURL(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		ShortURL("https://ya.ru")
+	}
 }
