@@ -53,6 +53,7 @@ func requestExample(server *httptest.Server, method string, path string, request
 	if err != nil {
 		return 0, err
 	}
+	defer resp.Body.Close()
 
 	_, err = io.ReadAll(resp.Body)
 	if err != nil {

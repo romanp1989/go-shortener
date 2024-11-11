@@ -103,7 +103,7 @@ func TestEncode(t *testing.T) {
 	mockStorageDB := mocks.NewMockStorage(mockCtrl)
 	defer mockCtrl.Finish()
 
-	storageURLs := storage.Storage{mockStorageDB}
+	storageURLs := storage.Storage{Storage: mockStorageDB}
 	handler := New(storageURLs)
 
 	firstCall := mockStorageDB.EXPECT().Save(gomock.Any(), "https://ya.ru", "6YGS4ZUF", gomock.Any()).Return("6YGS4ZUF", nil)
@@ -211,7 +211,7 @@ func TestDecode(t *testing.T) {
 	mockStorageDB := mocks.NewMockStorage(mockCtrl)
 	defer mockCtrl.Finish()
 
-	storageURLs := storage.Storage{mockStorageDB}
+	storageURLs := storage.Storage{Storage: mockStorageDB}
 	handler := New(storageURLs)
 
 	mockStorageDB.EXPECT().Get(firstShort).Return(firstOriginalURL, nil).Times(1)
@@ -320,7 +320,7 @@ func TestShorten(t *testing.T) {
 	mockStorageDB := mocks.NewMockStorage(mockCtrl)
 	defer mockCtrl.Finish()
 
-	storageURLs := storage.Storage{mockStorageDB}
+	storageURLs := storage.Storage{Storage: mockStorageDB}
 	handler := New(storageURLs)
 
 	firstCall := mockStorageDB.EXPECT().Save(gomock.Any(), "https://ya.ru", "6YGS4ZUF", gomock.Any()).Return("6YGS4ZUF", nil)
@@ -472,7 +472,7 @@ func TestHandlers_SaveBatch(t *testing.T) {
 	mockStorageDB := mocks.NewMockStorage(mockCtrl)
 	defer mockCtrl.Finish()
 
-	storageURLs := storage.Storage{mockStorageDB}
+	storageURLs := storage.Storage{Storage: mockStorageDB}
 	handler := New(storageURLs)
 
 	savedUrls := []string{"6YGS4ZUF", "x+5vpM8W"}

@@ -83,7 +83,7 @@ func TestHandlers_GetURLs(t *testing.T) {
 	mockStorageDB := mocks.NewMockStorage(mockCtrl)
 	defer mockCtrl.Finish()
 
-	storageURLs := storage.Storage{mockStorageDB}
+	storageURLs := storage.Storage{Storage: mockStorageDB}
 	handler := New(storageURLs)
 
 	mockStorageDB.EXPECT().GetAllUrlsByUser(gomock.Any(), &firstUserID).Return(firstURLs, nil).Times(1)

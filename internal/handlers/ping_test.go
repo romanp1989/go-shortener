@@ -41,7 +41,7 @@ func TestHandlers_PingDB(t *testing.T) {
 	mockStorageDB := mocks.NewMockStorage(mockCtrl)
 	defer mockCtrl.Finish()
 
-	storageURLs := storage.Storage{mockStorageDB}
+	storageURLs := storage.Storage{Storage: mockStorageDB}
 	handler := New(storageURLs)
 
 	firstCall := mockStorageDB.EXPECT().Ping(gomock.Any()).Return(nil).Times(1)
