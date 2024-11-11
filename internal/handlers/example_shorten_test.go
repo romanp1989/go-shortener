@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"context"
+	"github.com/go-chi/chi/v5"
 	"github.com/romanp1989/go-shortener/internal/auth"
-	"github.com/romanp1989/go-shortener/internal/logger"
-	"github.com/romanp1989/go-shortener/internal/route"
+	"github.com/romanp1989/go-shortener/internal/middlewares"
 	"github.com/romanp1989/go-shortener/internal/storage"
 	"io"
 	"log"
@@ -18,15 +18,15 @@ func Example_handlers_Shorten() {
 	store := storage.Init("", "./shortener.txt")
 
 	handlers := New(*store)
-	deleteHandler, err := NewDelete(store)
-	if err != nil {
-		logger.Log.Fatal(err.Error())
-	}
 
-	router := route.New(handlers, deleteHandler)
+	router := chi.NewRouter()
 
 	srv := httptest.NewServer(router)
 	defer srv.Close()
+
+	router.Use(middlewares.GzipMiddleware)
+	router.Use(middlewares.WithLogging)
+	router.Post("/api/shorten", handlers.Shorten())
 
 	requestBody := `{"url": "https://ya.ru"}`
 	statusCode, err := requestExample(srv, http.MethodPost, "/api/shorten", requestBody)
