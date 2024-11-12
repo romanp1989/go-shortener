@@ -94,6 +94,7 @@ func (h *Handlers) Encode() http.HandlerFunc {
 	return http.HandlerFunc(fn)
 }
 
+// ShortURL function for generate short name for URL
 func ShortURL(url string) string {
 	sum := md5.Sum([]byte(url))
 	encoded := base64.StdEncoding.EncodeToString(sum[:])

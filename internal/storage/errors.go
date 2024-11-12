@@ -5,10 +5,8 @@ import (
 	"fmt"
 )
 
-var (
-	// ErrConflict данные уже существуют
-	ErrConflict = errors.New("данные уже существуют")
-)
+// ErrConflict data already exists
+var ErrConflict = errors.New("данные уже существуют")
 
 // URLConflictError structure for url conflict error, if URL already exists in DB
 type URLConflictError struct {

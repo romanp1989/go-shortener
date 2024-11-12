@@ -5,6 +5,7 @@ import (
 	"net/http"
 )
 
+// Logger types
 type (
 	// ResponseData structure for response data
 	ResponseData struct {
@@ -50,7 +51,7 @@ func (r *LoggingResponseWriter) Write(b []byte) (int, error) {
 	return size, err
 }
 
-// Write function logging the response status code
+// WriteHeader function logging the response status code
 func (r *LoggingResponseWriter) WriteHeader(statusCode int) {
 	r.ResponseWriter.WriteHeader(statusCode)
 	r.ResponseData.Status = statusCode // захватываем код статуса
