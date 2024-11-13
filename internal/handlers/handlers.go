@@ -163,16 +163,6 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 
 		userID := auth.UIDFromContext(ctx)
 		if userID == nil {
-			//shortenResponse := models.ShortenResponse{
-			//	Result: "Пользователь неавторизован",
-			//}
-			//enc := json.NewEncoder(w)
-			//if err := enc.Encode(shortenResponse); err != nil {
-			//	logger.Log.Debug("Ошибка создания ответа", zap.Error(err))
-			//	w.WriteHeader(http.StatusBadRequest)
-			//	return
-			//}
-
 			w.WriteHeader(http.StatusUnauthorized)
 
 			return
@@ -182,16 +172,6 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 		dec := json.NewDecoder(r.Body)
 		if err := dec.Decode(&req); err != nil {
 			logger.Log.Debug("cannot decode request JSON body", zap.Error(err))
-
-			//shortenResponse := models.ShortenResponse{
-			//	Result: "cannot decode request JSON body",
-			//}
-			//enc := json.NewEncoder(w)
-			//if err := enc.Encode(shortenResponse); err != nil {
-			//	logger.Log.Debug("Ошибка создания ответа", zap.Error(err))
-			//	w.WriteHeader(http.StatusBadRequest)
-			//	return
-			//}
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
