@@ -175,7 +175,7 @@ func (d *DBStorage) DeleteBatch(ctx context.Context, userID *uuid.UUID, urls []s
 
 	urlList := new(pgtype.VarcharArray)
 
-	if err := urlList.Set(urls); err != nil {
+	if err = urlList.Set(urls); err != nil {
 		return fmt.Errorf("ошибка при формировании списка url для удаления: %v", err)
 	}
 
