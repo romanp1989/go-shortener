@@ -15,11 +15,43 @@ import (
 	"sync"
 )
 
+// SQLDB database operations interface
+type SQLDB interface {
+	Exec(query string, args ...any) (sql.Result, error)
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
+	PingContext(ctx context.Context) error
+}
+
 // DBStorage DB storage
 type DBStorage struct {
-	db *sql.DB
+	db SQLDB
 	mu sync.RWMutex
 }
+
+// SaveInsertQuery insert query for save urls
+const SaveInsertQuery = `INSERT INTO urls(short_url, original_url, user_id) 
+VALUES ($1, $2, $3)
+RETURNING short_url`
+
+// GetSelectQuery get url by short or original url
+const GetSelectQuery = `SELECT short_url, original_url, deleted_flag FROM urls WHERE short_url = $1 or original_url = $1`
+
+// SaveBatchInsertQuery insert query for batch save urls
+const SaveBatchInsertQuery = `INSERT INTO urls (short_url, original_url, user_id) 
+			 	VALUES %s
+				ON CONFLICT (original_url) DO UPDATE SET short_url = EXCLUDED.short_url, original_url = EXCLUDED.original_url
+				RETURNING short_url`
+
+// DeleteBatchQuery delete urls by user
+const DeleteBatchQuery = `UPDATE urls
+			SET deleted_flag = true
+			WHERE user_id = $1 and short_url = ANY($2)`
+
+// GetAllUrlsByUserSelectQuery get all urls by user
+const GetAllUrlsByUserSelectQuery = `SELECT short_url, original_url FROM urls WHERE user_id = $1 and length(short_url) > 0`
 
 // NewDB factory for create DB storage
 func NewDB(DBPath string) *DBStorage {
@@ -61,10 +93,10 @@ func (d *DBStorage) Save(ctx context.Context, originalURL string, shortURL strin
 	var insertedURL string
 	var pgErr *pgconn.PgError
 
-	insertQuery := `INSERT INTO urls(short_url, original_url, user_id) 
-VALUES ($1, $2, $3)
-RETURNING short_url`
-	err := d.db.QueryRowContext(ctx, insertQuery, shortURL, originalURL, userID).Scan(&insertedURL)
+	//	insertQuery := `INSERT INTO urls(short_url, original_url, user_id)
+	//VALUES ($1, $2, $3)
+	//RETURNING short_url`
+	err := d.db.QueryRowContext(ctx, SaveInsertQuery, shortURL, originalURL, userID).Scan(&insertedURL)
 	if err != nil {
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
 			err = ErrConflict
@@ -80,7 +112,7 @@ func (d *DBStorage) Get(inputURL string) (string, error) {
 	var short, original string
 	var deletedFlag sql.NullBool
 
-	row := d.db.QueryRowContext(context.Background(), "SELECT short_url, original_url, deleted_flag FROM urls WHERE short_url = $1 or original_url = $1", inputURL)
+	row := d.db.QueryRowContext(context.Background(), GetSelectQuery, inputURL)
 	if err := row.Scan(&short, &original, &deletedFlag); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", nil
@@ -130,10 +162,7 @@ func (d *DBStorage) SaveBatch(ctx context.Context, urls []models.StorageURL, use
 		paramNumber += 2
 	}
 
-	query := `INSERT INTO urls (short_url, original_url, user_id) 
-			 	VALUES ` + insertValues + `
-				ON CONFLICT (original_url) DO UPDATE SET short_url = EXCLUDED.short_url, original_url = EXCLUDED.original_url
-				RETURNING short_url`
+	query := fmt.Sprintf(SaveBatchInsertQuery, insertValues)
 
 	rows, err := tx.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -179,10 +208,7 @@ func (d *DBStorage) DeleteBatch(ctx context.Context, userID *uuid.UUID, urls []s
 		return fmt.Errorf("ошибка при формировании списка url для удаления: %v", err)
 	}
 
-	query := `UPDATE urls
-			SET deleted_flag = true
-			WHERE user_id = $1 and short_url = ANY($2)`
-	res, err := d.db.ExecContext(ctx, query, userID, urlList)
+	res, err := d.db.ExecContext(ctx, DeleteBatchQuery, userID, urlList)
 	log.Print(res)
 
 	if err != nil {
@@ -197,8 +223,7 @@ func (d *DBStorage) DeleteBatch(ctx context.Context, userID *uuid.UUID, urls []s
 // GetAllUrlsByUser function for get all user's URLs
 func (d *DBStorage) GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]models.StorageURL, error) {
 	storageURLs := make([]models.StorageURL, 0)
-	query := `SELECT short_url, original_url FROM urls WHERE user_id = $1 and length(short_url) > 0`
-	rows, err := d.db.QueryContext(ctx, query, userID)
+	rows, err := d.db.QueryContext(ctx, GetAllUrlsByUserSelectQuery, userID)
 	if err != nil {
 		return nil, err
 	}

@@ -6,6 +6,7 @@ import (
 	"golang.org/x/tools/go/analysis/passes/inspect"
 )
 
+// Analyzer analyzer struct
 var Analyzer = &analysis.Analyzer{
 	Name:     "mainexitanalyzer",
 	Doc:      "Checking of use call os.Exit() in main function",
@@ -13,6 +14,7 @@ var Analyzer = &analysis.Analyzer{
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
 
+// run function analyzer for check usage call os.Exit in main function
 func run(pass *analysis.Pass) (interface{}, error) {
 	for _, file := range pass.Files {
 
@@ -40,7 +42,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 					}
 
 					if idExpr, ok := selExpr.X.(*ast.Ident); ok && idExpr.Name == "os" && selExpr.Sel.Name == "Exit" {
-						pass.Reportf(selExpr.Pos(), "allow not using call os.Exit() in main function")
+						pass.Reportf(selExpr.Pos(), "allow not using call os.Exit in main function")
 					}
 					return false
 				})
