@@ -6,6 +6,7 @@ import (
 	"github.com/romanp1989/go-shortener/internal/middlewares"
 )
 
+// New Factory for create routes
 func New(h handlers.Handlers, delete *handlers.DeleteBatch) *chi.Mux {
 	r := chi.NewRouter()
 

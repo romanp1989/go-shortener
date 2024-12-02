@@ -18,6 +18,7 @@ type itemDelete struct {
 	userID *uuid.UUID
 }
 
+// DeleteBatch handler for delete items in DB
 type DeleteBatch struct {
 	storage   *storage.Storage
 	inChan    chan itemDelete
@@ -25,6 +26,7 @@ type DeleteBatch struct {
 	size      int
 }
 
+// NewDelete Factory for DeleteBatch handler
 func NewDelete(store *storage.Storage) (*DeleteBatch, error) {
 	d := &DeleteBatch{
 		storage:   store,
@@ -40,6 +42,7 @@ func NewDelete(store *storage.Storage) (*DeleteBatch, error) {
 	return d, nil
 }
 
+// DeleteURLs function for delete urls
 func (d *DeleteBatch) DeleteURLs() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		var urls []string
@@ -90,6 +93,7 @@ func (d *DeleteBatch) add(userID *uuid.UUID, urls []string) {
 	}
 }
 
+// process function starts the goroutine for delete user's urls
 func (d *DeleteBatch) process() {
 	for {
 		select {

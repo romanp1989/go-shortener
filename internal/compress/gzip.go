@@ -11,6 +11,7 @@ type compressWriter struct {
 	zw *gzip.Writer
 }
 
+// NewCompressWriter Factory for create new gzip writer
 func NewCompressWriter(w http.ResponseWriter) *compressWriter {
 	return &compressWriter{
 		w:  w,
@@ -18,14 +19,17 @@ func NewCompressWriter(w http.ResponseWriter) *compressWriter {
 	}
 }
 
+// Header return header
 func (c *compressWriter) Header() http.Header {
 	return c.w.Header()
 }
 
+// Write add data to gzip
 func (c *compressWriter) Write(p []byte) (int, error) {
 	return c.zw.Write(p)
 }
 
+// WriteHeader add header data to gzip
 func (c *compressWriter) WriteHeader(statusCode int) {
 	if statusCode < 300 {
 		c.w.Header().Set("Content-Encoding", "gzip")
@@ -33,6 +37,7 @@ func (c *compressWriter) WriteHeader(statusCode int) {
 	c.w.WriteHeader(statusCode)
 }
 
+// Close Function for stop gzip writer
 func (c *compressWriter) Close() error {
 	return c.zw.Close()
 }
@@ -42,6 +47,7 @@ type compressReader struct {
 	zr *gzip.Reader
 }
 
+// NewCompressReader Factory for create gzip reader
 func NewCompressReader(r io.ReadCloser) (*compressReader, error) {
 	zr, err := gzip.NewReader(r)
 	if err != nil {
@@ -54,9 +60,12 @@ func NewCompressReader(r io.ReadCloser) (*compressReader, error) {
 	}, nil
 }
 
+// Read Get data from gzip
 func (c compressReader) Read(p []byte) (n int, err error) {
 	return c.zr.Read(p)
 }
+
+// Close Stop gzip reader
 func (c compressReader) Close() error {
 	if err := c.r.Close(); err != nil {
 		return err

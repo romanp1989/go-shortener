@@ -11,17 +11,20 @@ import (
 	"net/http"
 )
 
+// App Application configuration
 type App struct {
 	flagRunPort string
 	chi         *chi.Mux
 }
 
+// RunServer run application server
 func RunServer() error {
-	app := NewApp()
-	return http.ListenAndServe(app.flagRunPort, app.chi)
+	server := NewApp()
+	return server.ListenAndServe()
 }
 
-func NewApp() *App {
+// NewApp Create Application configuration
+func NewApp() *http.Server {
 	err := config.ParseFlags()
 	if err != nil {
 		logger.Log.Fatal(err.Error())
@@ -35,17 +38,17 @@ func NewApp() *App {
 
 	s := storage.Init(config.Options.FlagDatabaseDsn, config.Options.FlagFileStorage)
 
-	h := handlers.New(s)
+	h := handlers.New(*s)
 
-	deleteHanlder, err := handlers.NewDelete(s)
+	deleteHandler, err := handlers.NewDelete(s)
 	if err != nil {
 		logger.Log.Fatal(err.Error())
 	}
 
-	r := route.New(h, deleteHanlder)
+	r := route.New(h, deleteHandler)
 
-	return &App{
-		flagRunPort: config.Options.FlagRunPort,
-		chi:         r,
+	return &http.Server{
+		Addr:    config.Options.FlagRunPort,
+		Handler: r,
 	}
 }

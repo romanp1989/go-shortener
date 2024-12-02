@@ -15,12 +15,14 @@ import (
 	"sync"
 )
 
-type RDB struct {
+// DBStorage DB storage
+type DBStorage struct {
 	db *sql.DB
 	mu sync.RWMutex
 }
 
-func NewDB(DBPath string) *RDB {
+// NewDB factory for create DB storage
+func NewDB(DBPath string) *DBStorage {
 	db, err := sql.Open("pgx", DBPath)
 	if err != nil {
 		log.Fatal(err)
@@ -46,12 +48,13 @@ func NewDB(DBPath string) *RDB {
 		return nil
 	}
 
-	return &RDB{
+	return &DBStorage{
 		db: db,
 	}
 }
 
-func (d *RDB) Save(ctx context.Context, originalURL string, shortURL string, userID *uuid.UUID) (string, error) {
+// Save function for save URL in DB
+func (d *DBStorage) Save(ctx context.Context, originalURL string, shortURL string, userID *uuid.UUID) (string, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -72,7 +75,8 @@ RETURNING short_url`
 	return insertedURL, nil
 }
 
-func (d *RDB) Get(inputURL string) (string, error) {
+// Get function for get URL from DB
+func (d *DBStorage) Get(inputURL string) (string, error) {
 	var short, original string
 	var deletedFlag sql.NullBool
 
@@ -99,7 +103,8 @@ func (d *RDB) Get(inputURL string) (string, error) {
 	return "", nil
 }
 
-func (d *RDB) SaveBatch(ctx context.Context, urls []models.StorageURL, userID *uuid.UUID) ([]string, error) {
+// SaveBatch function for saving URL list
+func (d *DBStorage) SaveBatch(ctx context.Context, urls []models.StorageURL, userID *uuid.UUID) ([]string, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -157,7 +162,8 @@ func (d *RDB) SaveBatch(ctx context.Context, urls []models.StorageURL, userID *u
 	return shortURLs, nil
 }
 
-func (d *RDB) DeleteBatch(ctx context.Context, userID *uuid.UUID, urls []string) error {
+// DeleteBatch function for delete URLs list
+func (d *DBStorage) DeleteBatch(ctx context.Context, userID *uuid.UUID, urls []string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -188,7 +194,8 @@ func (d *RDB) DeleteBatch(ctx context.Context, userID *uuid.UUID, urls []string)
 	return nil
 }
 
-func (d *RDB) GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]models.StorageURL, error) {
+// GetAllUrlsByUser function for get all user's URLs
+func (d *DBStorage) GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]models.StorageURL, error) {
 	storageURLs := make([]models.StorageURL, 0)
 	query := `SELECT short_url, original_url FROM urls WHERE user_id = $1 and length(short_url) > 0`
 	rows, err := d.db.QueryContext(ctx, query, userID)
@@ -215,7 +222,8 @@ func (d *RDB) GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]models
 	return storageURLs, nil
 }
 
-func (d *RDB) Ping(ctx context.Context) error {
+// Ping function for ping DB connection
+func (d *DBStorage) Ping(ctx context.Context) error {
 	if err := d.db.PingContext(ctx); err != nil {
 		return err
 	}

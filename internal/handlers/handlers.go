@@ -21,18 +21,24 @@ import (
 	"time"
 )
 
+// Handlers handlers
 type Handlers struct {
-	storage *storage.Storage
+	storage storage.Storage
 }
 
-var urlStore = make(map[string]string)
-
-func New(storage *storage.Storage) Handlers {
+// New Factory for create handlers
+func New(storage storage.Storage) Handlers {
 	return Handlers{
 		storage: storage,
 	}
 }
 
+// Encode handler for creating a shortened URL based on the original one
+// @Accept string
+// @Success 201 {string} short URL
+// @Failure 400 bad request
+// @Failure 401 error if user unauthorized
+// @Failure 409 error if URL already exists in DB
 func (h *Handlers) Encode() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -59,7 +65,7 @@ func (h *Handlers) Encode() http.HandlerFunc {
 			return
 		}
 
-		hashID := shortURL(stringURI)
+		hashID := ShortURL(stringURI)
 		shortID, err := h.storage.SaveURL(r.Context(), stringURI, hashID, userID)
 		if err != nil {
 			logger.Log.Debug("Ошибка добавления данных", zap.Error(err))
@@ -88,7 +94,8 @@ func (h *Handlers) Encode() http.HandlerFunc {
 	return http.HandlerFunc(fn)
 }
 
-func shortURL(url string) string {
+// ShortURL function for generate short name for URL
+func ShortURL(url string) string {
 	sum := md5.Sum([]byte(url))
 	encoded := base64.StdEncoding.EncodeToString(sum[:])
 	encoded = strings.Replace(encoded, "/", "", -1)[:8]
@@ -96,6 +103,13 @@ func shortURL(url string) string {
 	return encoded
 }
 
+// Decode handler for getting the original URL from short URL
+// @Accept string
+// @Success 307 {string} redirect to result URL
+// @Failure 400 bad request
+// @Failure 410 error if URL already deleted
+// @Failure 404 error if URL not found
+// @Failure 409 error if URL already exists in DB
 func (h *Handlers) Decode() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -132,6 +146,12 @@ func (h *Handlers) Decode() http.HandlerFunc {
 	return http.HandlerFunc(fn)
 }
 
+// Shorten handler for creating a shortened URL based on the original one
+// @Accept json
+// @Success 201 {json} short URL json
+// @Failure 500 internal error if can't decode request body
+// @Failure 401 error if user unauthorized
+// @Failure 409 error if URL already exists in DB
 func (h *Handlers) Shorten() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 
@@ -143,16 +163,6 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 
 		userID := auth.UIDFromContext(ctx)
 		if userID == nil {
-			shortenResponse := models.ShortenResponse{
-				Result: "Пользователь неавторизован",
-			}
-			enc := json.NewEncoder(w)
-			if err := enc.Encode(shortenResponse); err != nil {
-				logger.Log.Debug("Ошибка создания ответа", zap.Error(err))
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-
 			w.WriteHeader(http.StatusUnauthorized)
 
 			return
@@ -162,21 +172,11 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 		dec := json.NewDecoder(r.Body)
 		if err := dec.Decode(&req); err != nil {
 			logger.Log.Debug("cannot decode request JSON body", zap.Error(err))
-
-			shortenResponse := models.ShortenResponse{
-				Result: "cannot decode request JSON body",
-			}
-			enc := json.NewEncoder(w)
-			if err := enc.Encode(shortenResponse); err != nil {
-				logger.Log.Debug("Ошибка создания ответа", zap.Error(err))
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		hashID := shortURL(req.URL)
+		hashID := ShortURL(req.URL)
 		shortID, err := h.storage.SaveURL(r.Context(), req.URL, hashID, userID)
 		if err != nil {
 			logger.Log.Debug("Ошибка добавления данных", zap.Error(err))
@@ -236,6 +236,11 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 	return http.HandlerFunc(fn)
 }
 
+// SaveBatch handler for creating a shortened URL based on the original one
+// @Accept json
+// @Success 201 {json} list of short URLs json
+// @Failure 400 bad request error if can't decode request body
+// @Failure 401 error if user unauthorized
 func (h *Handlers) SaveBatch() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		var batchReq []models.BatchShortenRequest
@@ -259,6 +264,11 @@ func (h *Handlers) SaveBatch() http.HandlerFunc {
 		var shortURLs []models.StorageURL
 
 		for _, value := range batchReq {
+			if _, err := url.ParseRequestURI(value.OriginalURL); err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
 			hashID, err := h.storage.GetURL(value.OriginalURL)
 			if err != nil {
 				logger.Log.Debug("error get url response", zap.Error(err))
@@ -267,7 +277,7 @@ func (h *Handlers) SaveBatch() http.HandlerFunc {
 			}
 
 			if hashID == "" {
-				hashID = shortURL(value.OriginalURL)
+				hashID = ShortURL(value.OriginalURL)
 				shortURLs = append(shortURLs, models.StorageURL{
 					OriginalURL: value.OriginalURL,
 					ShortURL:    hashID,

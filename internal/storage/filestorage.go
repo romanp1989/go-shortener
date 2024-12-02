@@ -12,10 +12,12 @@ import (
 	"path/filepath"
 )
 
+// FileStorage File storage
 type FileStorage struct {
 	FileStoragePath string
 }
 
+// NewFileStorage factory for create file storage
 func NewFileStorage(path string) (*FileStorage, error) {
 	dir := filepath.Dir(path)
 
@@ -29,6 +31,7 @@ func NewFileStorage(path string) (*FileStorage, error) {
 	return &FileStorage{FileStoragePath: path}, nil
 }
 
+// Save function for save URL in DB
 func (s *FileStorage) Save(ctx context.Context, originalURL string, shortURL string, userID *uuid.UUID) (string, error) {
 	var urlStorage models.StorageURL
 
@@ -50,6 +53,7 @@ func (s *FileStorage) Save(ctx context.Context, originalURL string, shortURL str
 	return shortURL, nil
 }
 
+// Get function for get URL from DB
 func (s *FileStorage) Get(inputURL string) (string, error) {
 	var (
 		read       [][]byte
@@ -94,6 +98,7 @@ func (s *FileStorage) Get(inputURL string) (string, error) {
 	return "", nil
 }
 
+// SaveBatch function for saving URL list
 func (s *FileStorage) SaveBatch(ctx context.Context, urls []models.StorageURL, userID *uuid.UUID) ([]string, error) {
 	var urlStorage models.StorageURL
 
@@ -117,14 +122,17 @@ func (s *FileStorage) SaveBatch(ctx context.Context, urls []models.StorageURL, u
 	return nil, nil
 }
 
+// DeleteBatch function for delete URLs list
 func (s *FileStorage) DeleteBatch(ctx context.Context, userID *uuid.UUID, urls []string) error {
 	return nil
 }
 
+// GetAllUrlsByUser function for get all user's URLs
 func (s *FileStorage) GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]models.StorageURL, error) {
 	return nil, nil
 }
 
+// Ping function for ping DB connection
 func (s *FileStorage) Ping(ctx context.Context) error {
 	return nil
 }
