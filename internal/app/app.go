@@ -30,7 +30,7 @@ func NewApp() *http.Server {
 		logger.Log.Fatal(err.Error())
 	}
 
-	if err := logger.Initialize(config.Options.FlagLogLevel); err != nil {
+	if err = logger.Initialize(config.Options.FlagLogLevel); err != nil {
 		logger.Log.Fatal(err.Error())
 	}
 
