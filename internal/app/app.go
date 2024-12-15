@@ -1,6 +1,7 @@
 package app
 
 import (
+	"crypto/tls"
 	"github.com/go-chi/chi/v5"
 	"github.com/romanp1989/go-shortener/internal/config"
 	"github.com/romanp1989/go-shortener/internal/handlers"
@@ -18,27 +19,27 @@ type App struct {
 }
 
 // RunServer run application server
-func RunServer() error {
-	server := NewApp()
-	return server.ListenAndServe()
-}
+//func RunServer() error {
+//	server := NewApp()
+//	return server.ListenAndServe()
+//}
 
-// NewApp Create Application configuration
-func NewApp() *http.Server {
-	err := config.ParseFlags()
+// RunServer run application server
+func RunServer() error {
+	cfg, err := config.ParseFlags()
 	if err != nil {
 		logger.Log.Fatal(err.Error())
 	}
 
-	if err = logger.Initialize(config.Options.FlagLogLevel); err != nil {
+	if err = logger.Initialize(cfg.LogLevel); err != nil {
 		logger.Log.Fatal(err.Error())
 	}
 
-	logger.Log.Info("Running server on ", zap.String("port", config.Options.FlagRunPort))
+	logger.Log.Info("Running server on ", zap.String("port", cfg.ServerAddress))
 
-	s := storage.Init(config.Options.FlagDatabaseDsn, config.Options.FlagFileStorage)
+	s := storage.Init(cfg.DatabaseDsn, cfg.FileStorage)
 
-	h := handlers.New(*s)
+	h := handlers.New(*s, cfg)
 
 	deleteHandler, err := handlers.NewDelete(s)
 	if err != nil {
@@ -47,8 +48,19 @@ func NewApp() *http.Server {
 
 	r := route.New(h, deleteHandler)
 
-	return &http.Server{
-		Addr:    config.Options.FlagRunPort,
+	srv := &http.Server{
+		Addr:    cfg.ServerAddress,
 		Handler: r,
 	}
+
+	if cfg.HTTPS.Enable {
+		srv.TLSConfig = &tls.Config{}
+
+		return srv.ListenAndServeTLS(
+			cfg.HTTPS.Pem,
+			cfg.HTTPS.Key,
+		)
+	}
+
+	return srv.ListenAndServe()
 }
