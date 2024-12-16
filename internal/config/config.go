@@ -2,10 +2,12 @@ package config
 
 import (
 	"bytes"
+	"cmp"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"encoding/pem"
 	"flag"
 	"fmt"
@@ -31,17 +33,17 @@ import (
 
 // ConfigENV env configuration params
 type ConfigENV struct {
-	ServerAddress string `env:"SERVER_ADDRESS"`
-	BaseURL       string `env:"BASE_URL"`
+	ServerAddress string `env:"SERVER_ADDRESS" json:"server_address,omitempty"`
+	BaseURL       string `env:"BASE_URL" json:"base_url,omitempty"`
 	LogLevel      string `env:"LOG_LEVEL"`
-	FileStorage   string `env:"FILE_STORAGE_PATH"`
-	DatabaseDsn   string `env:"DATABASE_DSN"`
+	FileStorage   string `env:"FILE_STORAGE_PATH" json:"file_storage_path,omitempty"`
+	DatabaseDsn   string `env:"DATABASE_DSN" json:"database_dsn,omitempty"`
 	SecretKey     string `env:"SECRET_KEY"`
 	HTTPS         HTTPSConfig
 }
 
 type HTTPSConfig struct {
-	Enable bool `env:"ENABLE_HTTPS"`
+	Enable bool `env:"ENABLE_HTTPS" json:"enable_https,omitempty"`
 	Key    string
 	Pem    string
 }
@@ -58,6 +60,7 @@ func ParseFlags() (*ConfigENV, error) {
 	//}
 
 	var cfg ConfigENV
+	var configPath string
 
 	pwd, _ := os.Getwd()
 	cfg.HTTPS.Key = path.Join(pwd, "/server.key")
@@ -84,6 +87,30 @@ func ParseFlags() (*ConfigENV, error) {
 	if err != nil {
 		log.Printf("Ошибка при парсинге переменных окружения %s", err.Error())
 		return nil, err
+	}
+
+	if os.Getenv("CONFIG") != "" {
+		configPath = os.Getenv("CONFIG")
+	}
+
+	if configPath != "" {
+		fCfg := ConfigENV{
+			HTTPS: HTTPSConfig{},
+		}
+		confFromFile, err := os.ReadFile(configPath)
+		if err != nil {
+			return nil, fmt.Errorf("can't read config from file: %w", err)
+		}
+
+		if err := json.Unmarshal(confFromFile, &cfg); err != nil {
+			return nil, fmt.Errorf("can't parse config from file: %w", err)
+		}
+
+		cfg.ServerAddress = cmp.Or(cfg.ServerAddress, fCfg.ServerAddress)
+		cfg.BaseURL = cmp.Or(cfg.BaseURL, fCfg.BaseURL)
+		cfg.FileStorage = cmp.Or(cfg.FileStorage, fCfg.FileStorage)
+		cfg.DatabaseDsn = cmp.Or(cfg.DatabaseDsn, fCfg.DatabaseDsn)
+		cfg.HTTPS.Enable = cmp.Or(cfg.HTTPS.Enable, fCfg.HTTPS.Enable)
 	}
 
 	//if cfg.ServerAddress != "" {
