@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"crypto/tls"
 	"github.com/go-chi/chi/v5"
 	"github.com/romanp1989/go-shortener/internal/config"
@@ -10,6 +11,10 @@ import (
 	"github.com/romanp1989/go-shortener/internal/storage"
 	"go.uber.org/zap"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 // App Application configuration
@@ -19,13 +24,7 @@ type App struct {
 }
 
 // RunServer run application server
-//func RunServer() error {
-//	server := NewApp()
-//	return server.ListenAndServe()
-//}
-
-// RunServer run application server
-func RunServer() error {
+func RunServer() {
 	cfg, err := config.ParseFlags()
 	if err != nil {
 		logger.Log.Fatal(err.Error())
@@ -53,14 +52,34 @@ func RunServer() error {
 		Handler: r,
 	}
 
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+
 	if cfg.HTTPS.Enable {
 		srv.TLSConfig = &tls.Config{}
 
-		return srv.ListenAndServeTLS(
-			cfg.HTTPS.Pem,
-			cfg.HTTPS.Key,
-		)
+		go func() {
+			if err := srv.ListenAndServeTLS(
+				cfg.HTTPS.Pem,
+				cfg.HTTPS.Key,
+			); err != nil {
+				logger.Log.Fatal(err.Error())
+			}
+		}()
+	} else {
+		go func() {
+			if err := srv.ListenAndServe(); err != nil {
+				logger.Log.Fatal(err.Error())
+			}
+		}()
 	}
 
-	return srv.ListenAndServe()
+	<-sig
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		logger.Log.Fatal("HTTP Server Shutdown error: %v", zap.String("error", err.Error()))
+	}
 }
