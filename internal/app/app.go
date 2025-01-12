@@ -24,14 +24,18 @@ type App struct {
 }
 
 // RunServer run application server
-func RunServer() {
+func RunServer() error {
 	cfg, err := config.ParseFlags()
 	if err != nil {
-		logger.Log.Fatal(err.Error())
+		logger.Log.Info(err.Error())
+		return err
 	}
 
+	errChan := make(chan error, 1)
+
 	if err = logger.Initialize(cfg.LogLevel); err != nil {
-		logger.Log.Fatal(err.Error())
+		logger.Log.Info(err.Error())
+		return err
 	}
 
 	logger.Log.Info("Running server on ", zap.String("port", cfg.ServerAddress))
@@ -42,7 +46,8 @@ func RunServer() {
 
 	deleteHandler, err := handlers.NewDelete(s)
 	if err != nil {
-		logger.Log.Fatal(err.Error())
+		logger.Log.Info(err.Error())
+		return err
 	}
 
 	r := route.New(h, deleteHandler)
@@ -64,22 +69,34 @@ func RunServer() {
 				cfg.HTTPS.Key,
 			); err != nil {
 				logger.Log.Fatal(err.Error())
+				errChan <- err
 			}
 		}()
 	} else {
 		go func() {
 			if err := srv.ListenAndServe(); err != nil {
-				logger.Log.Fatal(err.Error())
+				logger.Log.Info(err.Error())
+				errChan <- err
 			}
 		}()
 	}
 
-	<-sig
+	for {
+		select {
+		case err := <-errChan:
+			return err
+		case _ = <-sig:
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+			if err := srv.Shutdown(ctx); err != nil {
+				logger.Log.Fatal("HTTP Server Shutdown error: %v", zap.String("error", err.Error()))
+				return err
+			}
 
-	if err := srv.Shutdown(ctx); err != nil {
-		logger.Log.Fatal("HTTP Server Shutdown error: %v", zap.String("error", err.Error()))
+			return nil
+		}
+
 	}
+
 }
