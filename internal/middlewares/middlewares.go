@@ -13,6 +13,7 @@ import (
 	"time"
 )
 
+// Middleware middleware struct
 type Middleware struct {
 	Cfg *config.ConfigENV
 }

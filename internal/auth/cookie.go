@@ -51,27 +51,6 @@ func CreateToken(userID *uuid.UUID, secretKey string) (string, error) {
 	return tokenString, nil
 }
 
-// Validation Function for validate auth token
-func Validation(tokenString string, secretKey string) bool {
-
-	token, err := jwt.Parse(tokenString,
-		func(t *jwt.Token) (interface{}, error) {
-			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
-			}
-			return []byte(secretKey), nil
-		})
-
-	if err != nil {
-		return false
-	}
-
-	if !token.Valid {
-		return false
-	}
-	return true
-}
-
 // EnsureRandom Function generate random uuid
 func EnsureRandom() (res uuid.UUID) {
 	return uuid.Must(uuid.NewV4())

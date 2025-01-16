@@ -40,7 +40,7 @@ func (h *Handlers) GetURLs() http.HandlerFunc {
 		allUrls := make([]models.StorageURL, 0, len(urls))
 		for _, v := range urls {
 			var store models.StorageURL
-			store.ShortURL = fmt.Sprintf("%s/%s", h.Cfg.ServerAddress, v.ShortURL)
+			store.ShortURL = fmt.Sprintf("%s/%s", h.Cfg.BaseURL, v.ShortURL)
 			store.OriginalURL = v.OriginalURL
 			allUrls = append(allUrls, store)
 		}

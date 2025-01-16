@@ -85,7 +85,7 @@ func RunServer() error {
 		select {
 		case err := <-errChan:
 			return err
-		case _ = <-sig:
+		case <-sig:
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
 

@@ -129,7 +129,37 @@ func (s *FileStorage) DeleteBatch(ctx context.Context, userID *uuid.UUID, urls [
 
 // GetAllUrlsByUser function for get all user's URLs
 func (s *FileStorage) GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]models.StorageURL, error) {
-	return nil, nil
+	var (
+		read       [][]byte
+		storageURL []models.StorageURL
+	)
+	file, err := os.OpenFile(s.FileStoragePath, os.O_RDONLY|os.O_CREATE, 0666)
+	if err != nil {
+		return []models.StorageURL{}, err
+	}
+
+	defer file.Close()
+
+	reader := bufio.NewReader(file)
+
+	for {
+		data, err := reader.ReadBytes('\n')
+		if err == io.EOF {
+			break
+		}
+
+		read = append(read, data)
+	}
+
+	for _, line := range read {
+		urls := models.StorageURL{}
+		err := json.Unmarshal(line, &urls)
+		if err == nil {
+			storageURL = append(storageURL, urls)
+		}
+	}
+
+	return storageURL, nil
 }
 
 // Ping function for ping DB connection

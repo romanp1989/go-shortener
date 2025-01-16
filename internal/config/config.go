@@ -42,12 +42,14 @@ type ConfigENV struct {
 	HTTPS         HTTPSConfig
 }
 
+// HTTPSConfig https config struct with key, pem
 type HTTPSConfig struct {
 	Enable bool `env:"ENABLE_HTTPS" json:"enable_https,omitempty"`
 	Key    string
 	Pem    string
 }
 
+// TLSConfig config for tls key, pem
 type TLSConfig struct {
 	Key *rsa.PrivateKey
 	Pem []byte
@@ -55,10 +57,6 @@ type TLSConfig struct {
 
 // ParseFlags function for parse application run flags
 func ParseFlags() (*ConfigENV, error) {
-	//if Options.FlagRunPort != "" {
-	//	return nil, nil
-	//}
-
 	var cfg ConfigENV
 	var configPath string
 
@@ -66,20 +64,12 @@ func ParseFlags() (*ConfigENV, error) {
 	cfg.HTTPS.Key = path.Join(pwd, "/server.key")
 	cfg.HTTPS.Pem = path.Join(pwd, "/server.pem")
 
-	//flag.StringVar(&Options.FlagRunPort, "a", ":8080", "port to run server")
-	//flag.StringVar(&Options.FlagShortURL, "b", "http://localhost:8080", "address to run server")
-	//flag.StringVar(&Options.FlagLogLevel, "l", "info", "log level")
-	//flag.StringVar(&Options.FlagFileStorage, "f", "/tmp/shortener.txt", "file storage")
-	//flag.StringVar(&Options.FlagDatabaseDsn, "d", "", "Database DSN")
-	//flag.StringVar(&Options.FlagSecretKey, "sk", "verycomplexsecretkey", "Secret key")
-	//flag.StringVar(&Options.FlagSecretKey, "s", "", "Enable HTTPS")
-
 	flag.StringVar(&cfg.ServerAddress, "a", ":8080", "port to run server")
 	flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "address to run server")
 	flag.StringVar(&cfg.LogLevel, "l", "info", "log level")
 	flag.StringVar(&cfg.FileStorage, "f", "/tmp/shortener.txt", "file storage")
 	flag.StringVar(&cfg.DatabaseDsn, "d", "", "Database DSN")
-	flag.StringVar(&cfg.SecretKey, "sk", "verycomplexsecretkey", "Secret key")
+	flag.StringVar(&cfg.SecretKey, "sk", "sdfsdfsadfsdafasfsaf", "Secret key")
 	flag.BoolVar(&cfg.HTTPS.Enable, "s", false, "Enable HTTPS")
 	flag.Parse()
 
@@ -112,33 +102,6 @@ func ParseFlags() (*ConfigENV, error) {
 		cfg.DatabaseDsn = cmp.Or(cfg.DatabaseDsn, fCfg.DatabaseDsn)
 		cfg.HTTPS.Enable = cmp.Or(cfg.HTTPS.Enable, fCfg.HTTPS.Enable)
 	}
-
-	//if cfg.ServerAddress != "" {
-	//	Options.FlagRunPort = cfg.ServerAddress
-	//}
-	//
-	//if cfg.BaseURL != "" {
-	//	Options.FlagShortURL = cfg.BaseURL
-	//}
-	//
-	//if cfg.LogLevel != "" {
-	//	Options.FlagLogLevel = cfg.LogLevel
-	//}
-	//
-	//if cfg.FileStorage != "" {
-	//	Options.FlagFileStorage = cfg.FileStorage
-	//}
-	//
-	//if cfg.DatabaseDsn != "" {
-	//	Options.FlagDatabaseDsn = cfg.DatabaseDsn
-	//}
-	//if cfg.SecretKey != "" {
-	//	Options.FlagSecretKey = cfg.SecretKey
-	//}
-	//
-	//if cfg.EnableHTTPS {
-	//	Options.FlagEnableHTTPS = cfg.EnableHTTPS
-	//}
 
 	if cfg.HTTPS.Enable {
 		tlsConf, err := createTLSCertificate()
