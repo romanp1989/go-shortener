@@ -1,6 +1,8 @@
 package app
 
 import (
+	"context"
+	"crypto/tls"
 	"github.com/go-chi/chi/v5"
 	"github.com/romanp1989/go-shortener/internal/config"
 	"github.com/romanp1989/go-shortener/internal/handlers"
@@ -9,6 +11,10 @@ import (
 	"github.com/romanp1989/go-shortener/internal/storage"
 	"go.uber.org/zap"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 // App Application configuration
@@ -19,36 +25,78 @@ type App struct {
 
 // RunServer run application server
 func RunServer() error {
-	server := NewApp()
-	return server.ListenAndServe()
-}
-
-// NewApp Create Application configuration
-func NewApp() *http.Server {
-	err := config.ParseFlags()
+	cfg, err := config.ParseFlags()
 	if err != nil {
-		logger.Log.Fatal(err.Error())
+		logger.Log.Info(err.Error())
+		return err
 	}
 
-	if err = logger.Initialize(config.Options.FlagLogLevel); err != nil {
-		logger.Log.Fatal(err.Error())
+	errChan := make(chan error, 1)
+
+	if err = logger.Initialize(cfg.LogLevel); err != nil {
+		logger.Log.Info(err.Error())
+		return err
 	}
 
-	logger.Log.Info("Running server on ", zap.String("port", config.Options.FlagRunPort))
+	logger.Log.Info("Running server on ", zap.String("port", cfg.ServerAddress))
 
-	s := storage.Init(config.Options.FlagDatabaseDsn, config.Options.FlagFileStorage)
+	s := storage.Init(cfg.DatabaseDsn, cfg.FileStorage)
 
-	h := handlers.New(*s)
+	h := handlers.New(*s, cfg)
 
 	deleteHandler, err := handlers.NewDelete(s)
 	if err != nil {
-		logger.Log.Fatal(err.Error())
+		logger.Log.Info(err.Error())
+		return err
 	}
 
 	r := route.New(h, deleteHandler)
 
-	return &http.Server{
-		Addr:    config.Options.FlagRunPort,
+	srv := &http.Server{
+		Addr:    cfg.ServerAddress,
 		Handler: r,
 	}
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+
+	if cfg.HTTPS.Enable {
+		srv.TLSConfig = &tls.Config{}
+
+		go func() {
+			if err := srv.ListenAndServeTLS(
+				cfg.HTTPS.Pem,
+				cfg.HTTPS.Key,
+			); err != nil {
+				logger.Log.Fatal(err.Error())
+				errChan <- err
+			}
+		}()
+	} else {
+		go func() {
+			if err := srv.ListenAndServe(); err != nil {
+				logger.Log.Info(err.Error())
+				errChan <- err
+			}
+		}()
+	}
+
+	for {
+		select {
+		case err := <-errChan:
+			return err
+		case <-sig:
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			if err := srv.Shutdown(ctx); err != nil {
+				logger.Log.Fatal("HTTP Server Shutdown error: %v", zap.String("error", err.Error()))
+				return err
+			}
+
+			return nil
+		}
+
+	}
+
 }

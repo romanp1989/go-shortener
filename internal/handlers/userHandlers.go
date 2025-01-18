@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/romanp1989/go-shortener/internal/auth"
-	"github.com/romanp1989/go-shortener/internal/config"
 	"github.com/romanp1989/go-shortener/internal/logger"
 	"github.com/romanp1989/go-shortener/internal/models"
 	"go.uber.org/zap"
@@ -41,7 +40,7 @@ func (h *Handlers) GetURLs() http.HandlerFunc {
 		allUrls := make([]models.StorageURL, 0, len(urls))
 		for _, v := range urls {
 			var store models.StorageURL
-			store.ShortURL = fmt.Sprintf("%s/%s", config.Options.FlagShortURL, v.ShortURL)
+			store.ShortURL = fmt.Sprintf("%s/%s", h.Cfg.BaseURL, v.ShortURL)
 			store.OriginalURL = v.OriginalURL
 			allUrls = append(allUrls, store)
 		}

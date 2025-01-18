@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"github.com/romanp1989/go-shortener/internal/app"
 	"html/template"
-	"log"
 	"os"
-	//_ "net/http/pprof"
 )
 
 var (
@@ -31,10 +29,7 @@ Build commit: {{if .BuildCommit}} {{.BuildCommit}} {{else}} N/A {{end}}
 // main Main function for launch application
 func main() {
 	printBuildInfo()
-	if err := app.RunServer(); err != nil {
-		var msg = err.Error()
-		log.Fatalf("error %s", msg)
-	}
+	app.RunServer()
 }
 
 func printBuildInfo() {

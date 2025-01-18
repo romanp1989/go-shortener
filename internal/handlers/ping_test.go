@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"github.com/golang/mock/gomock"
+	"github.com/romanp1989/go-shortener/internal/config"
 	"github.com/romanp1989/go-shortener/internal/models/mocks"
 	"github.com/romanp1989/go-shortener/internal/storage"
 	"github.com/stretchr/testify/assert"
@@ -42,7 +43,8 @@ func TestHandlers_PingDB(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	storageURLs := storage.Storage{Storage: mockStorageDB}
-	handler := New(storageURLs)
+	cfg, _ := config.ParseFlags()
+	handler := New(storageURLs, cfg)
 
 	firstCall := mockStorageDB.EXPECT().Ping(gomock.Any()).Return(nil).Times(1)
 	mockStorageDB.EXPECT().Ping(gomock.Any()).After(firstCall).Return(errors.New("error database connect ping"))

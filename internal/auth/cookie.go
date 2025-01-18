@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/gofrs/uuid"
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/romanp1989/go-shortener/internal/config"
 	"net/http"
 	"time"
 )
@@ -18,9 +17,9 @@ type Claims struct {
 }
 
 // NewCookie Function add new authorization cookie
-func NewCookie(w http.ResponseWriter, userID *uuid.UUID) {
+func NewCookie(w http.ResponseWriter, userID *uuid.UUID, secretKey string) {
 
-	token, err := CreateToken(userID)
+	token, err := CreateToken(userID, secretKey)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -36,7 +35,7 @@ func NewCookie(w http.ResponseWriter, userID *uuid.UUID) {
 }
 
 // CreateToken Function create auth token with userID
-func CreateToken(userID *uuid.UUID) (string, error) {
+func CreateToken(userID *uuid.UUID, secretKey string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(tokenExp)),
@@ -44,33 +43,12 @@ func CreateToken(userID *uuid.UUID) (string, error) {
 		UserID: userID,
 	})
 
-	tokenString, err := token.SignedString([]byte(config.Options.FlagSecretKey))
+	tokenString, err := token.SignedString([]byte(secretKey))
 	if err != nil {
 		return "", err
 	}
 
 	return tokenString, nil
-}
-
-// Validation Function for validate auth token
-func Validation(tokenString string) bool {
-
-	token, err := jwt.Parse(tokenString,
-		func(t *jwt.Token) (interface{}, error) {
-			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
-			}
-			return []byte(config.Options.FlagSecretKey), nil
-		})
-
-	if err != nil {
-		return false
-	}
-
-	if !token.Valid {
-		return false
-	}
-	return true
 }
 
 // EnsureRandom Function generate random uuid
@@ -79,14 +57,14 @@ func EnsureRandom() (res uuid.UUID) {
 }
 
 // GetUserID Function for get userID from auth token
-func GetUserID(tokenString string) (*uuid.UUID, error) {
+func GetUserID(tokenString string, secretKey string) (*uuid.UUID, error) {
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims,
 		func(t *jwt.Token) (interface{}, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("неизвестный алгоритм подписи: %v", t.Header["alg"])
 			}
-			return []byte(config.Options.FlagSecretKey), nil
+			return []byte(secretKey), nil
 		})
 	if err != nil {
 		return nil, err

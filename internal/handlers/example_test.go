@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/go-chi/chi/v5"
 	"github.com/romanp1989/go-shortener/internal/auth"
+	"github.com/romanp1989/go-shortener/internal/config"
 	"github.com/romanp1989/go-shortener/internal/middlewares"
 	"github.com/romanp1989/go-shortener/internal/storage"
 	"io"
@@ -16,16 +17,24 @@ import (
 // Rrequest example for route /api/shorten
 func Example_handlers_Shorten() {
 	store := storage.Init("", "./shortener.txt")
+	cfg := &config.ConfigENV{
+		ServerAddress: ":8080",
+		BaseURL:       "http://localhost:8080",
+	}
 
-	handlers := New(*store)
+	handlers := New(*store, cfg)
 
 	router := chi.NewRouter()
 
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
-	router.Use(middlewares.GzipMiddleware)
-	router.Use(middlewares.WithLogging)
+	m := middlewares.Middleware{
+		Cfg: handlers.Cfg,
+	}
+
+	router.Use(m.GzipMiddleware)
+	router.Use(m.WithLogging)
 	router.Post("/api/shorten", handlers.Shorten())
 
 	requestBody := `{"url": "https://ya.ru"}`

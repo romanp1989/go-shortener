@@ -24,10 +24,6 @@ func TestDBStorage_Save(t *testing.T) {
 		mu: sync.RWMutex{},
 	}
 
-	//type fields struct {
-	//	db SQLDB
-	//	mu sync.RWMutex
-	//}
 	type args struct {
 		ctx         context.Context
 		originalURL string
@@ -40,18 +36,6 @@ func TestDBStorage_Save(t *testing.T) {
 	mock.ExpectQuery("INSERT INTO urls").
 		WithArgs("6YGS4ZUF", "https://ya.ru", userID).
 		WillReturnRows(sqlmock.NewRows([]string{"short_url"}).AddRow("6YGS4ZUF"))
-
-	//mockCtrl := gomock.NewController(t)
-	//mockStorageDB := mocks2.NewMockSQLDB(mockCtrl)
-	//defer mockCtrl.Finish()
-	//
-	//mockStorageDB.EXPECT().Save(gomock.Any(), "https://ya.ru", "6YGS4ZUF", gomock.Any()).Return("6YGS4ZUF", nil)
-	//mockStorageDB.EXPECT().QueryRowContext(gomock.Any(), SaveInsertQuery, "6YGS4ZUF", "https://ya.ru", userID).Return(sql.Row{}, nil)
-
-	//testFields := fields{
-	//	db: mockStorageDB,
-	//	mu: sync.RWMutex{},
-	//}
 
 	tests := []struct {
 		name string
@@ -75,10 +59,6 @@ func TestDBStorage_Save(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			//d := &DBStorage{
-			//	db: tt.fields.db,
-			//	mu: tt.fields.mu,
-			//}
 			got, err := store.Save(tt.args.ctx, tt.args.originalURL, tt.args.shortURL, tt.args.userID)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Save() error = %v, wantErr %v", err, tt.wantErr)
@@ -248,7 +228,7 @@ func TestDBStorage_DeleteBatch(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "Success_SaveBatch",
+			name: "Success_DeleteBatch",
 			args: args{
 				inputURLs: []string{"6YGS4ZUF"},
 			},
