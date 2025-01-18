@@ -60,7 +60,7 @@ func (h *Handlers) Encode() http.HandlerFunc {
 
 		stringURI := string(body)
 
-		if _, err := url.ParseRequestURI(stringURI); err != nil {
+		if _, err = url.ParseRequestURI(stringURI); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -262,14 +262,15 @@ func (h *Handlers) SaveBatch() http.HandlerFunc {
 		}
 
 		var shortURLs []models.StorageURL
+		var hashID string
 
 		for _, value := range batchReq {
-			if _, err := url.ParseRequestURI(value.OriginalURL); err != nil {
+			if _, err = url.ParseRequestURI(value.OriginalURL); err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
 
-			hashID, err := h.storage.GetURL(value.OriginalURL)
+			hashID, err = h.storage.GetURL(value.OriginalURL)
 			if err != nil {
 				logger.Log.Debug("error get url response", zap.Error(err))
 				w.WriteHeader(http.StatusBadRequest)
