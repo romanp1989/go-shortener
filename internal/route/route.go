@@ -26,6 +26,7 @@ func New(h handlers.Handlers, delete *handlers.DeleteBatch) *chi.Mux {
 			r.With(m.AuthMiddlewareSet).Post("/", h.Shorten())
 			r.With(m.AuthMiddlewareSet).Post("/batch", h.SaveBatch())
 		})
+		r.With(m.ValidateSubnet).Get("/internal/stats", h.GetStats())
 
 	})
 

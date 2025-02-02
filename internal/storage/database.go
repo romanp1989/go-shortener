@@ -53,6 +53,9 @@ const DeleteBatchQuery = `UPDATE urls
 // GetAllUrlsByUserSelectQuery get all urls by user
 const GetAllUrlsByUserSelectQuery = `SELECT short_url, original_url FROM urls WHERE user_id = $1 and length(short_url) > 0`
 
+// GetStats get users, urls count
+const GetStats = `SELECT count(distinct user_id), count(distinct short_ulr) FROM urls`
+
 // NewDB factory for create DB storage
 func NewDB(DBPath string) *DBStorage {
 	db, err := sql.Open("pgx", DBPath)
@@ -253,4 +256,15 @@ func (d *DBStorage) Ping(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+// GetStats load users, URLs count
+func (d *DBStorage) GetStats(ctx context.Context) ([]models.StorageStats, error) {
+	stats := make([]models.StorageStats, 0)
+
+	err := d.db.QueryRowContext(ctx, GetStats).Scan(&stats.Users, &stats.URLs)
+	if err != nil {
+		return nil, err
+	}
+	return stats, nil
 }

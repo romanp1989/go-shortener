@@ -39,6 +39,7 @@ type ConfigENV struct {
 	FileStorage   string `env:"FILE_STORAGE_PATH" json:"file_storage_path,omitempty"`
 	DatabaseDsn   string `env:"DATABASE_DSN" json:"database_dsn,omitempty"`
 	SecretKey     string `env:"SECRET_KEY"`
+	TrustedSubnet string `env:"TRUSTED_SUBNET"`
 	HTTPS         HTTPSConfig
 }
 
@@ -71,6 +72,7 @@ func ParseFlags() (*ConfigENV, error) {
 	flag.StringVar(&cfg.DatabaseDsn, "d", "", "Database DSN")
 	flag.StringVar(&cfg.SecretKey, "sk", "sdfsdfsadfsdafasfsaf", "Secret key")
 	flag.BoolVar(&cfg.HTTPS.Enable, "s", false, "Enable HTTPS")
+	flag.StringVar(&cfg.TrustedSubnet, "t", "", "Trusted subnet")
 	flag.Parse()
 
 	err := env.Parse(&cfg)

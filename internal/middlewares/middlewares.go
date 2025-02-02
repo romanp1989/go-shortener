@@ -8,6 +8,7 @@ import (
 	"github.com/romanp1989/go-shortener/internal/config"
 	"github.com/romanp1989/go-shortener/internal/logger"
 	"go.uber.org/zap"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -149,6 +150,40 @@ func (m Middleware) AuthMiddlewareRead(h http.Handler) http.Handler {
 
 		ctx := auth.Context(r.Context(), *uid)
 		r = r.WithContext(ctx)
+
+		h.ServeHTTP(w, r)
+	})
+}
+
+// ValidateSubnet validate user ip for internal access
+func (m Middleware) ValidateSubnet(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var trustedSubnets string
+		var ipNet *net.IPNet
+		var err error
+
+		trustedSubnets = m.Cfg.TrustedSubnet
+		if trustedSubnets != "" {
+			_, ipNet, err = net.ParseCIDR(trustedSubnets)
+			if err != nil {
+				logger.Log.Error("Parse error trusted subnet config: %v", zap.String("error", err.Error()))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
+
+		ipStr := r.Header.Get("X-Real-IP")
+		ip := net.ParseIP(ipStr)
+
+		if ip == nil {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		if !ipNet.Contains(ip) {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
 
 		h.ServeHTTP(w, r)
 	})
