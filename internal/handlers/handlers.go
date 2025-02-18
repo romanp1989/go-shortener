@@ -24,12 +24,14 @@ import (
 // Handlers handlers
 type Handlers struct {
 	storage storage.Storage
+	Cfg     *config.ConfigENV
 }
 
 // New Factory for create handlers
-func New(storage storage.Storage) Handlers {
+func New(storage storage.Storage, cfg *config.ConfigENV) Handlers {
 	return Handlers{
 		storage: storage,
+		Cfg:     cfg,
 	}
 }
 
@@ -74,7 +76,7 @@ func (h *Handlers) Encode() http.HandlerFunc {
 			if errors.As(err, &errConflict) {
 				shortID = errConflict.URL
 				w.WriteHeader(http.StatusConflict)
-				w.Write([]byte(fmt.Sprintf("%s/%s", config.Options.FlagShortURL, shortID)))
+				w.Write([]byte(fmt.Sprintf("%s/%s", h.Cfg.BaseURL, shortID)))
 				return
 			} else {
 				w.WriteHeader(http.StatusBadRequest)
@@ -84,7 +86,7 @@ func (h *Handlers) Encode() http.HandlerFunc {
 			w.WriteHeader(http.StatusCreated)
 		}
 
-		resp := fmt.Sprintf("%s/%s", config.Options.FlagShortURL, shortID)
+		resp := fmt.Sprintf("%s/%s", h.Cfg.BaseURL, shortID)
 
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusCreated)
@@ -187,7 +189,7 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 				w.WriteHeader(http.StatusConflict)
 
 				shortenResponse := models.ShortenResponse{
-					Result: fmt.Sprintf("%s/%s", config.Options.FlagShortURL, shortID),
+					Result: fmt.Sprintf("%s/%s", h.Cfg.BaseURL, shortID),
 				}
 				enc := json.NewEncoder(w)
 				if err := enc.Encode(shortenResponse); err != nil {
@@ -218,7 +220,7 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 			w.WriteHeader(http.StatusCreated)
 		}
 
-		resp := fmt.Sprintf("%s/%s", config.Options.FlagShortURL, shortID)
+		resp := fmt.Sprintf("%s/%s", h.Cfg.BaseURL, shortID)
 
 		shortenResponse := models.ShortenResponse{
 			Result: resp,
@@ -303,7 +305,7 @@ func (h *Handlers) SaveBatch() http.HandlerFunc {
 		for i, shortURL := range urls {
 			res = append(res, models.BatchShortenResponse{
 				CorrelationID: batchReq[i].CorrelationID,
-				ShortURL:      fmt.Sprintf("%s/%s", config.Options.FlagShortURL, shortURL),
+				ShortURL:      fmt.Sprintf("%s/%s", h.Cfg.BaseURL, shortURL),
 			})
 		}
 

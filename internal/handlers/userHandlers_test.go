@@ -22,7 +22,10 @@ import (
 )
 
 func TestHandlers_GetURLs(t *testing.T) {
-
+	cfg := &config.ConfigENV{
+		ServerAddress: "http://localhost:8080",
+		BaseURL:       "http://localhost:8080",
+	}
 	firstUserID := auth.EnsureRandom()
 	firstURLs := []models.StorageURL{
 		{
@@ -35,7 +38,7 @@ func TestHandlers_GetURLs(t *testing.T) {
 		{
 			UserID:      nil,
 			OriginalURL: firstURLs[0].OriginalURL,
-			ShortURL:    fmt.Sprintf("%s/%s", config.Options.FlagShortURL, firstURLs[0].ShortURL),
+			ShortURL:    fmt.Sprintf("%s/%s", cfg.BaseURL, firstURLs[0].ShortURL),
 		},
 	}
 	firstResponse, _ := json.Marshal(firstURLResponse)
@@ -84,7 +87,7 @@ func TestHandlers_GetURLs(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	storageURLs := storage.Storage{Storage: mockStorageDB}
-	handler := New(storageURLs)
+	handler := New(storageURLs, cfg)
 
 	mockStorageDB.EXPECT().GetAllUrlsByUser(gomock.Any(), &firstUserID).Return(firstURLs, nil).Times(1)
 	mockStorageDB.EXPECT().GetAllUrlsByUser(gomock.Any(), &secondUserID).Return(make([]models.StorageURL, 0), errors.New("Ошибка при получении urls пользователя")).Times(1)

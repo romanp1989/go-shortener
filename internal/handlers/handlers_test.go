@@ -29,6 +29,11 @@ func TestEncode(t *testing.T) {
 		responseURL string
 	}
 
+	cfg := &config.ConfigENV{
+		ServerAddress: ":8080",
+		BaseURL:       "http://localhost:8080",
+	}
+
 	tests := []struct {
 		name        string
 		method      string
@@ -97,14 +102,13 @@ func TestEncode(t *testing.T) {
 			},
 		},
 	}
-	config.ParseFlags()
 
 	mockCtrl := gomock.NewController(t)
 	mockStorageDB := mocks.NewMockStorage(mockCtrl)
 	defer mockCtrl.Finish()
 
 	storageURLs := storage.Storage{Storage: mockStorageDB}
-	handler := New(storageURLs)
+	handler := New(storageURLs, cfg)
 
 	firstCall := mockStorageDB.EXPECT().Save(gomock.Any(), "https://ya.ru", "6YGS4ZUF", gomock.Any()).Return("6YGS4ZUF", nil)
 	secondCall := mockStorageDB.EXPECT().Save(gomock.Any(), "https://ya.ru", "6YGS4ZUF", gomock.Any()).After(firstCall).Return("", storage.NewURLConflictError("6YGS4ZUF", storage.ErrConflict))
@@ -145,6 +149,11 @@ func TestDecode(t *testing.T) {
 	type want struct {
 		statusCode  int
 		responseURL string
+	}
+
+	cfg := &config.ConfigENV{
+		ServerAddress: ":8080",
+		BaseURL:       "http://localhost:8080",
 	}
 
 	firstOriginalURL := "https://ya.ru"
@@ -212,7 +221,7 @@ func TestDecode(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	storageURLs := storage.Storage{Storage: mockStorageDB}
-	handler := New(storageURLs)
+	handler := New(storageURLs, cfg)
 
 	mockStorageDB.EXPECT().Get(firstShort).Return(firstOriginalURL, nil).Times(1)
 	mockStorageDB.EXPECT().Get(secondShort).Return("", nil).Times(1)
@@ -250,6 +259,11 @@ func TestShorten(t *testing.T) {
 	type want struct {
 		statusCode  int
 		responseURL string
+	}
+
+	cfg := &config.ConfigENV{
+		ServerAddress: ":8080",
+		BaseURL:       "http://localhost:8080",
 	}
 
 	var tests = []struct {
@@ -311,17 +325,12 @@ func TestShorten(t *testing.T) {
 		},
 	}
 
-	err := config.ParseFlags()
-	if err != nil {
-		return
-	}
-
 	mockCtrl := gomock.NewController(t)
 	mockStorageDB := mocks.NewMockStorage(mockCtrl)
 	defer mockCtrl.Finish()
 
 	storageURLs := storage.Storage{Storage: mockStorageDB}
-	handler := New(storageURLs)
+	handler := New(storageURLs, cfg)
 
 	firstCall := mockStorageDB.EXPECT().Save(gomock.Any(), "https://ya.ru", "6YGS4ZUF", gomock.Any()).Return("6YGS4ZUF", nil)
 	secondCall := mockStorageDB.EXPECT().Save(gomock.Any(), "https://ya.ru", "6YGS4ZUF", gomock.Any()).After(firstCall).Return("", storage.NewURLConflictError("6YGS4ZUF", storage.ErrConflict))
@@ -362,6 +371,11 @@ func TestHandlers_SaveBatch(t *testing.T) {
 	type want struct {
 		statusCode  int
 		responseURL string
+	}
+
+	cfg := &config.ConfigENV{
+		ServerAddress: ":8080",
+		BaseURL:       "http://localhost:8080",
 	}
 
 	var tests = []struct {
@@ -463,17 +477,12 @@ func TestHandlers_SaveBatch(t *testing.T) {
 		},
 	}
 
-	err := config.ParseFlags() //@TODO: Добавить моки конфига
-	if err != nil {
-		return
-	}
-
 	mockCtrl := gomock.NewController(t)
 	mockStorageDB := mocks.NewMockStorage(mockCtrl)
 	defer mockCtrl.Finish()
 
 	storageURLs := storage.Storage{Storage: mockStorageDB}
-	handler := New(storageURLs)
+	handler := New(storageURLs, cfg)
 
 	savedUrls := []string{"6YGS4ZUF", "x+5vpM8W"}
 	mockStorageDB.EXPECT().Get("https://ya.ru").Return("6YGS4ZUF", nil).Times(3)
@@ -512,11 +521,18 @@ func TestHandlers_SaveBatch(t *testing.T) {
 }
 
 func TestGzipCompression(t *testing.T) {
-	config.ParseFlags()
-	s := storage.Init(config.Options.FlagDatabaseDsn, config.Options.FlagFileStorage)
-	h := New(*s)
+	cfg := &config.ConfigENV{
+		ServerAddress: ":8080",
+		BaseURL:       "http://localhost:8080",
+		SecretKey:     "verycomplexsecretkey",
+	}
+	s := storage.Init(cfg.DatabaseDsn, cfg.FileStorage)
+	h := New(*s, cfg)
+	m := middlewares.Middleware{
+		Cfg: h.Cfg,
+	}
 
-	handler := middlewares.AuthMiddlewareSet(middlewares.GzipMiddleware(h.Encode()))
+	handler := m.AuthMiddlewareSet(m.GzipMiddleware(h.Encode()))
 
 	srv := httptest.NewServer(handler)
 	defer srv.Close()
@@ -540,7 +556,7 @@ func TestGzipCompression(t *testing.T) {
 		r.Header.Set("Accept-Encoding", "")
 
 		userID := auth.EnsureRandom()
-		token, _ := auth.CreateToken(&userID)
+		token, _ := auth.CreateToken(&userID, cfg.SecretKey)
 
 		cookie := &http.Cookie{
 			Name:  "auth",
@@ -567,7 +583,7 @@ func TestGzipCompression(t *testing.T) {
 		r.Header.Set("Accept-Encoding", "gzip")
 
 		userID := auth.EnsureRandom()
-		token, _ := auth.CreateToken(&userID)
+		token, _ := auth.CreateToken(&userID, cfg.SecretKey)
 
 		cookie := &http.Cookie{
 			Name:  "auth",

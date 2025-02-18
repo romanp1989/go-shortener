@@ -5,6 +5,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/romanp1989/go-shortener/internal/auth"
 	"github.com/romanp1989/go-shortener/internal/compress"
+	"github.com/romanp1989/go-shortener/internal/config"
 	"github.com/romanp1989/go-shortener/internal/logger"
 	"go.uber.org/zap"
 	"net/http"
@@ -12,8 +13,13 @@ import (
 	"time"
 )
 
+// Middleware middleware struct
+type Middleware struct {
+	Cfg *config.ConfigENV
+}
+
 // GzipMiddleware Middleware for archiving the hanlders response
-func GzipMiddleware(h http.Handler) http.Handler {
+func (m Middleware) GzipMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ow := w
 
@@ -49,7 +55,7 @@ func GzipMiddleware(h http.Handler) http.Handler {
 }
 
 // WithLogging Middleware for logging request
-func WithLogging(h http.Handler) http.Handler {
+func (m Middleware) WithLogging(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
@@ -81,7 +87,7 @@ func WithLogging(h http.Handler) http.Handler {
 }
 
 // AuthMiddlewareSet Middleware for set authorization cookie
-func AuthMiddlewareSet(h http.Handler) http.Handler {
+func (m Middleware) AuthMiddlewareSet(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var uid *uuid.UUID
 
@@ -98,9 +104,9 @@ func AuthMiddlewareSet(h http.Handler) http.Handler {
 			userID := auth.EnsureRandom()
 			uid = &userID
 
-			auth.NewCookie(w, uid)
+			auth.NewCookie(w, uid, m.Cfg.SecretKey)
 		} else if cookie.Value != "" {
-			uid, _ = auth.GetUserID(cookie.Value)
+			uid, _ = auth.GetUserID(cookie.Value, m.Cfg.SecretKey)
 		}
 
 		if uid == nil {
@@ -116,7 +122,7 @@ func AuthMiddlewareSet(h http.Handler) http.Handler {
 }
 
 // AuthMiddlewareRead Middleware for authorization users
-func AuthMiddlewareRead(h http.Handler) http.Handler {
+func (m Middleware) AuthMiddlewareRead(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var uid *uuid.UUID
 
@@ -131,9 +137,9 @@ func AuthMiddlewareRead(h http.Handler) http.Handler {
 			userID := auth.EnsureRandom()
 			uid = &userID
 
-			auth.NewCookie(w, uid)
+			auth.NewCookie(w, uid, m.Cfg.SecretKey)
 		} else if cookie.Value != "" {
-			uid, _ = auth.GetUserID(cookie.Value)
+			uid, _ = auth.GetUserID(cookie.Value, m.Cfg.SecretKey)
 		}
 
 		if uid == nil {
