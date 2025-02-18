@@ -80,6 +80,21 @@ func (mr *MockStorageMockRecorder) GetAllUrlsByUser(arg0, arg1 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllUrlsByUser", reflect.TypeOf((*MockStorage)(nil).GetAllUrlsByUser), arg0, arg1)
 }
 
+// GetStats mocks base method.
+func (m *MockStorage) GetStats(arg0 context.Context) (models.StorageStats, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetStats", arg0)
+	ret0, _ := ret[0].(models.StorageStats)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetStats indicates an expected call of GetStats.
+func (mr *MockStorageMockRecorder) GetStats(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStats", reflect.TypeOf((*MockStorage)(nil).GetStats), arg0)
+}
+
 // Ping mocks base method.
 func (m *MockStorage) Ping(arg0 context.Context) error {
 	m.ctrl.T.Helper()

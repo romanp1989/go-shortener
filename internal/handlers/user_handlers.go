@@ -3,10 +3,8 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/romanp1989/go-shortener/internal/auth"
 	"github.com/romanp1989/go-shortener/internal/logger"
-	"github.com/romanp1989/go-shortener/internal/models"
 	"go.uber.org/zap"
 	"net/http"
 	"time"
@@ -30,19 +28,11 @@ func (h *Handlers) GetURLs() http.HandlerFunc {
 			return
 		}
 
-		urls, err := h.storage.GetAllUrlsByUser(ctx, userID)
+		allUrls, err := h.appService.GetURLs(ctx, userID)
 		if err != nil {
 			logger.Log.Debug("Ошибка при получении urls пользователя", zap.Error(err))
 			w.WriteHeader(http.StatusNoContent)
 			return
-		}
-
-		allUrls := make([]models.StorageURL, 0, len(urls))
-		for _, v := range urls {
-			var store models.StorageURL
-			store.ShortURL = fmt.Sprintf("%s/%s", h.Cfg.BaseURL, v.ShortURL)
-			store.OriginalURL = v.OriginalURL
-			allUrls = append(allUrls, store)
 		}
 
 		b, err := json.Marshal(allUrls)

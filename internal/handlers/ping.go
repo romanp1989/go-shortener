@@ -14,7 +14,7 @@ func (h *Handlers) PingDB() http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
-		if err := h.storage.Ping(ctx); err != nil {
+		if err := h.appService.PingDB(ctx); err != nil {
 			logger.Log.Debug("error database connect ping", zap.Error(err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return

@@ -167,6 +167,6 @@ func (s *FileStorage) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (s *FileStorage) GetStats(ctx context.Context) ([]models.StorageStats, error) {
-	return make([]models.StorageStats, 0), nil
+func (s *FileStorage) GetStats(ctx context.Context) (models.StorageStats, error) {
+	return models.StorageStats{}, nil
 }

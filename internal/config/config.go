@@ -33,14 +33,15 @@ import (
 
 // ConfigENV env configuration params
 type ConfigENV struct {
-	ServerAddress string `env:"SERVER_ADDRESS" json:"server_address,omitempty"`
-	BaseURL       string `env:"BASE_URL" json:"base_url,omitempty"`
-	LogLevel      string `env:"LOG_LEVEL"`
-	FileStorage   string `env:"FILE_STORAGE_PATH" json:"file_storage_path,omitempty"`
-	DatabaseDsn   string `env:"DATABASE_DSN" json:"database_dsn,omitempty"`
-	SecretKey     string `env:"SECRET_KEY"`
-	TrustedSubnet string `env:"TRUSTED_SUBNET"`
-	HTTPS         HTTPSConfig
+	ServerAddress     string `env:"SERVER_ADDRESS" json:"server_address,omitempty"`
+	GRPCServerAddress string `env:"GRPC_SERVER_ADDRESS" json:"server_address,omitempty"`
+	BaseURL           string `env:"BASE_URL" json:"base_url,omitempty"`
+	LogLevel          string `env:"LOG_LEVEL"`
+	FileStorage       string `env:"FILE_STORAGE_PATH" json:"file_storage_path,omitempty"`
+	DatabaseDsn       string `env:"DATABASE_DSN" json:"database_dsn,omitempty"`
+	SecretKey         string `env:"SECRET_KEY"`
+	TrustedSubnet     string `env:"TRUSTED_SUBNET"`
+	HTTPS             HTTPSConfig
 }
 
 // HTTPSConfig https config struct with key, pem
@@ -66,6 +67,7 @@ func ParseFlags() (*ConfigENV, error) {
 	cfg.HTTPS.Pem = path.Join(pwd, "/server.pem")
 
 	flag.StringVar(&cfg.ServerAddress, "a", ":8080", "port to run server")
+	flag.StringVar(&cfg.GRPCServerAddress, "g", ":3200", "port to run grpc server")
 	flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "address to run server")
 	flag.StringVar(&cfg.LogLevel, "l", "info", "log level")
 	flag.StringVar(&cfg.FileStorage, "f", "/tmp/shortener.txt", "file storage")
@@ -99,6 +101,7 @@ func ParseFlags() (*ConfigENV, error) {
 		}
 
 		cfg.ServerAddress = cmp.Or(cfg.ServerAddress, fCfg.ServerAddress)
+		cfg.GRPCServerAddress = cmp.Or(cfg.GRPCServerAddress, fCfg.GRPCServerAddress)
 		cfg.BaseURL = cmp.Or(cfg.BaseURL, fCfg.BaseURL)
 		cfg.FileStorage = cmp.Or(cfg.FileStorage, fCfg.FileStorage)
 		cfg.DatabaseDsn = cmp.Or(cfg.DatabaseDsn, fCfg.DatabaseDsn)

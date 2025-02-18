@@ -51,6 +51,6 @@ func (s *CacheStorage) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (s *CacheStorage) GetStats(ctx context.Context) ([]models.StorageStats, error) {
-	return make([]models.StorageStats, 0), nil
+func (s *CacheStorage) GetStats(ctx context.Context) (models.StorageStats, error) {
+	return models.StorageStats{}, nil
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/romanp1989/go-shortener/internal/config"
 	"github.com/romanp1989/go-shortener/internal/models"
 	"github.com/romanp1989/go-shortener/internal/models/mocks"
+	shortener_service "github.com/romanp1989/go-shortener/internal/shortener-service"
 	"github.com/romanp1989/go-shortener/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +27,8 @@ func TestHandlers_GetURLs(t *testing.T) {
 		ServerAddress: "http://localhost:8080",
 		BaseURL:       "http://localhost:8080",
 	}
-	firstUserID := auth.EnsureRandom()
+	jwtService := auth.NewJwtService("verycomplexsecretkey")
+	firstUserID := jwtService.EnsureRandom()
 	firstURLs := []models.StorageURL{
 		{
 			UserID:      &firstUserID,
@@ -43,7 +45,7 @@ func TestHandlers_GetURLs(t *testing.T) {
 	}
 	firstResponse, _ := json.Marshal(firstURLResponse)
 
-	secondUserID := auth.EnsureRandom()
+	secondUserID := jwtService.EnsureRandom()
 
 	type want struct {
 		statusCode  int
@@ -87,7 +89,9 @@ func TestHandlers_GetURLs(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	storageURLs := storage.Storage{Storage: mockStorageDB}
-	handler := New(storageURLs, cfg)
+	appService := shortener_service.NewShortenerService(&storageURLs, cfg)
+
+	handler := New(appService)
 
 	mockStorageDB.EXPECT().GetAllUrlsByUser(gomock.Any(), &firstUserID).Return(firstURLs, nil).Times(1)
 	mockStorageDB.EXPECT().GetAllUrlsByUser(gomock.Any(), &secondUserID).Return(make([]models.StorageURL, 0), errors.New("Ошибка при получении urls пользователя")).Times(1)

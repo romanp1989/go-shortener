@@ -62,6 +62,6 @@ func (s *Storage) Ping(ctx context.Context) error {
 }
 
 // Ping function for ping storage connection
-func (s *Storage) GetStats(ctx context.Context) ([]models.StorageStats, error) {
+func (s *Storage) GetStats(ctx context.Context) (models.StorageStats, error) {
 	return s.Storage.GetStats(ctx)
 }

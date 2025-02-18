@@ -2,36 +2,30 @@ package handlers
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/romanp1989/go-shortener/internal/auth"
-	"github.com/romanp1989/go-shortener/internal/config"
 	"github.com/romanp1989/go-shortener/internal/logger"
 	"github.com/romanp1989/go-shortener/internal/models"
+	shortener_service "github.com/romanp1989/go-shortener/internal/shortener-service"
 	"github.com/romanp1989/go-shortener/internal/storage"
 	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 )
 
 // Handlers handlers
 type Handlers struct {
-	storage storage.Storage
-	Cfg     *config.ConfigENV
+	appService *shortener_service.ShortenerService
 }
 
 // New Factory for create handlers
-func New(storage storage.Storage, cfg *config.ConfigENV) Handlers {
+func New(appService *shortener_service.ShortenerService) Handlers {
 	return Handlers{
-		storage: storage,
-		Cfg:     cfg,
+		appService: appService,
 	}
 }
 
@@ -67,16 +61,16 @@ func (h *Handlers) Encode() http.HandlerFunc {
 			return
 		}
 
-		hashID := ShortURL(stringURI)
-		shortID, err := h.storage.SaveURL(r.Context(), stringURI, hashID, userID)
+		shortURL, err := h.appService.Encode(ctx, stringURI)
+
 		if err != nil {
 			logger.Log.Debug("Ошибка добавления данных", zap.Error(err))
 
 			var errConflict *storage.URLConflictError
 			if errors.As(err, &errConflict) {
-				shortID = errConflict.URL
+				//shortID = errConflict.URL
 				w.WriteHeader(http.StatusConflict)
-				w.Write([]byte(fmt.Sprintf("%s/%s", h.Cfg.BaseURL, shortID)))
+				w.Write([]byte(shortURL))
 				return
 			} else {
 				w.WriteHeader(http.StatusBadRequest)
@@ -86,23 +80,12 @@ func (h *Handlers) Encode() http.HandlerFunc {
 			w.WriteHeader(http.StatusCreated)
 		}
 
-		resp := fmt.Sprintf("%s/%s", h.Cfg.BaseURL, shortID)
-
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(resp))
+		w.Write([]byte(shortURL))
 	}
 
 	return http.HandlerFunc(fn)
-}
-
-// ShortURL function for generate short name for URL
-func ShortURL(url string) string {
-	sum := md5.Sum([]byte(url))
-	encoded := base64.StdEncoding.EncodeToString(sum[:])
-	encoded = strings.Replace(encoded, "/", "", -1)[:8]
-
-	return encoded
 }
 
 // Decode handler for getting the original URL from short URL
@@ -126,7 +109,7 @@ func (h *Handlers) Decode() http.HandlerFunc {
 			return
 		}
 
-		fullURL, err := h.storage.GetURL(id)
+		fullURL, err := h.appService.Decode(id)
 		if err != nil {
 			var errURLDeleted *storage.AlreadyDeleted
 			if errors.As(err, &errURLDeleted) {
@@ -156,7 +139,6 @@ func (h *Handlers) Decode() http.HandlerFunc {
 // @Failure 409 error if URL already exists in DB
 func (h *Handlers) Shorten() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-
 		logger.Log.Debug("decoding request")
 
 		ctx := r.Context()
@@ -178,8 +160,7 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 			return
 		}
 
-		hashID := ShortURL(req.URL)
-		shortID, err := h.storage.SaveURL(r.Context(), req.URL, hashID, userID)
+		shortURL, err := h.appService.Shorten(r.Context(), req.URL, userID)
 		if err != nil {
 			logger.Log.Debug("Ошибка добавления данных", zap.Error(err))
 
@@ -189,7 +170,7 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 				w.WriteHeader(http.StatusConflict)
 
 				shortenResponse := models.ShortenResponse{
-					Result: fmt.Sprintf("%s/%s", h.Cfg.BaseURL, shortID),
+					Result: shortURL,
 				}
 				enc := json.NewEncoder(w)
 				if err := enc.Encode(shortenResponse); err != nil {
@@ -220,10 +201,8 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 			w.WriteHeader(http.StatusCreated)
 		}
 
-		resp := fmt.Sprintf("%s/%s", h.Cfg.BaseURL, shortID)
-
 		shortenResponse := models.ShortenResponse{
-			Result: resp,
+			Result: shortURL,
 		}
 
 		enc := json.NewEncoder(w)
@@ -246,6 +225,8 @@ func (h *Handlers) Shorten() http.HandlerFunc {
 func (h *Handlers) SaveBatch() http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		var batchReq []models.BatchShortenRequest
+		var err error
+		var resp []models.BatchShortenResponse
 
 		ctx := r.Context()
 		ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
@@ -257,64 +238,25 @@ func (h *Handlers) SaveBatch() http.HandlerFunc {
 			return
 		}
 
-		err := json.NewDecoder(r.Body).Decode(&batchReq)
+		err = json.NewDecoder(r.Body).Decode(&batchReq)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		var shortURLs []models.StorageURL
-		var hashID string
+		resp, err = h.appService.SaveBatch(ctx, batchReq, userID)
 
-		for _, value := range batchReq {
-			if _, err = url.ParseRequestURI(value.OriginalURL); err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-
-			hashID, err = h.storage.GetURL(value.OriginalURL)
-			if err != nil {
-				logger.Log.Debug("error get url response", zap.Error(err))
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-
-			if hashID == "" {
-				hashID = ShortURL(value.OriginalURL)
-				shortURLs = append(shortURLs, models.StorageURL{
-					OriginalURL: value.OriginalURL,
-					ShortURL:    hashID,
-				})
-			} else {
-				shortURLs = append(shortURLs, models.StorageURL{
-					OriginalURL: value.OriginalURL,
-					ShortURL:    hashID,
-				})
-			}
-		}
-
-		urls, err := h.storage.SaveBatchURL(r.Context(), shortURLs, userID)
 		if err != nil {
 			logger.Log.Debug("error urls save", zap.Error(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		res := make([]models.BatchShortenResponse, 0, len(urls))
-
-		for i, shortURL := range urls {
-			res = append(res, models.BatchShortenResponse{
-				CorrelationID: batchReq[i].CorrelationID,
-				ShortURL:      fmt.Sprintf("%s/%s", h.Cfg.BaseURL, shortURL),
-			})
-		}
-
 		w.Header().Set("Content-Type", "application/json")
-		//w.Header().Set("Location", config.Options.FlagShortURL)
 		w.WriteHeader(http.StatusCreated)
 
 		enc := json.NewEncoder(w)
-		if err := enc.Encode(res); err != nil {
+		if err := enc.Encode(resp); err != nil {
 			logger.Log.Debug("error encoding response", zap.Error(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return

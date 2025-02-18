@@ -259,12 +259,12 @@ func (d *DBStorage) Ping(ctx context.Context) error {
 }
 
 // GetStats load users, URLs count
-func (d *DBStorage) GetStats(ctx context.Context) ([]models.StorageStats, error) {
-	stats := make([]models.StorageStats, 0)
+func (d *DBStorage) GetStats(ctx context.Context) (models.StorageStats, error) {
+	var stats models.StorageStats
 
 	err := d.db.QueryRowContext(ctx, GetStats).Scan(&stats.Users, &stats.URLs)
 	if err != nil {
-		return nil, err
+		return models.StorageStats{}, err
 	}
 	return stats, nil
 }

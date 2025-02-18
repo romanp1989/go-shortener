@@ -13,6 +13,7 @@ import (
 	"github.com/romanp1989/go-shortener/internal/middlewares"
 	"github.com/romanp1989/go-shortener/internal/models"
 	"github.com/romanp1989/go-shortener/internal/models/mocks"
+	shortener_service "github.com/romanp1989/go-shortener/internal/shortener-service"
 	"github.com/romanp1989/go-shortener/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,6 +34,7 @@ func TestEncode(t *testing.T) {
 		ServerAddress: ":8080",
 		BaseURL:       "http://localhost:8080",
 	}
+	jwtService := auth.NewJwtService("verycomplexsecretkey")
 
 	tests := []struct {
 		name        string
@@ -44,7 +46,7 @@ func TestEncode(t *testing.T) {
 		{
 			name:        "Valid_URL",
 			method:      http.MethodPost,
-			userID:      auth.EnsureRandom(),
+			userID:      jwtService.EnsureRandom(),
 			requestBody: "https://ya.ru",
 			want: want{
 				statusCode:  http.StatusCreated,
@@ -54,7 +56,7 @@ func TestEncode(t *testing.T) {
 		{
 			name:        "Empty_URL",
 			method:      http.MethodPost,
-			userID:      auth.EnsureRandom(),
+			userID:      jwtService.EnsureRandom(),
 			requestBody: "",
 			want: want{
 				statusCode:  http.StatusBadRequest,
@@ -74,7 +76,7 @@ func TestEncode(t *testing.T) {
 		{
 			name:        "Bad_URL",
 			method:      http.MethodPost,
-			userID:      auth.EnsureRandom(),
+			userID:      jwtService.EnsureRandom(),
 			requestBody: "https://ya . ru",
 			want: want{
 				statusCode:  http.StatusBadRequest,
@@ -84,7 +86,7 @@ func TestEncode(t *testing.T) {
 		{
 			name:        "Short_URL_Save_Conflict_Error",
 			method:      http.MethodPost,
-			userID:      auth.EnsureRandom(),
+			userID:      jwtService.EnsureRandom(),
 			requestBody: "https://ya.ru",
 			want: want{
 				statusCode:  http.StatusConflict,
@@ -94,7 +96,7 @@ func TestEncode(t *testing.T) {
 		{
 			name:        "Short_URL_Save_Other_Error",
 			method:      http.MethodPost,
-			userID:      auth.EnsureRandom(),
+			userID:      jwtService.EnsureRandom(),
 			requestBody: "https://ya.ru",
 			want: want{
 				statusCode:  http.StatusBadRequest,
@@ -108,7 +110,8 @@ func TestEncode(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	storageURLs := storage.Storage{Storage: mockStorageDB}
-	handler := New(storageURLs, cfg)
+	appService := shortener_service.NewShortenerService(&storageURLs, cfg)
+	handler := New(appService)
 
 	firstCall := mockStorageDB.EXPECT().Save(gomock.Any(), "https://ya.ru", "6YGS4ZUF", gomock.Any()).Return("6YGS4ZUF", nil)
 	secondCall := mockStorageDB.EXPECT().Save(gomock.Any(), "https://ya.ru", "6YGS4ZUF", gomock.Any()).After(firstCall).Return("", storage.NewURLConflictError("6YGS4ZUF", storage.ErrConflict))
@@ -156,12 +159,21 @@ func TestDecode(t *testing.T) {
 		BaseURL:       "http://localhost:8080",
 	}
 
-	firstOriginalURL := "https://ya.ru"
-	firstShort := ShortURL("https://ya.ru")
+	mockCtrl := gomock.NewController(t)
+	mockStorageDB := mocks.NewMockStorage(mockCtrl)
+	defer mockCtrl.Finish()
 
-	secondShort := ShortURL("https://yandex.ru")
-	thirdShort := ShortURL("https://dzen.ru")
-	fourthShort := ShortURL("https://mail.ru")
+	jwtService := auth.NewJwtService("verycomplexsecretkey")
+	storageURLs := storage.Storage{Storage: mockStorageDB}
+	appService := shortener_service.NewShortenerService(&storageURLs, cfg)
+	handler := New(appService)
+
+	firstOriginalURL := "https://ya.ru"
+	firstShort := appService.ShortURL("https://ya.ru")
+
+	secondShort := appService.ShortURL("https://yandex.ru")
+	thirdShort := appService.ShortURL("https://dzen.ru")
+	fourthShort := appService.ShortURL("https://mail.ru")
 
 	tests := []struct {
 		name     string
@@ -171,7 +183,7 @@ func TestDecode(t *testing.T) {
 	}{
 		{
 			name:     "Success_redirect",
-			userID:   auth.EnsureRandom(),
+			userID:   jwtService.EnsureRandom(),
 			shortURL: firstShort,
 			want: want{
 				statusCode:  http.StatusTemporaryRedirect,
@@ -180,7 +192,7 @@ func TestDecode(t *testing.T) {
 		},
 		{
 			name:     "Fail_redirect",
-			userID:   auth.EnsureRandom(),
+			userID:   jwtService.EnsureRandom(),
 			shortURL: secondShort,
 			want: want{
 				statusCode:  http.StatusNotFound,
@@ -189,7 +201,7 @@ func TestDecode(t *testing.T) {
 		},
 		{
 			name:     "Empty_URL",
-			userID:   auth.EnsureRandom(),
+			userID:   jwtService.EnsureRandom(),
 			shortURL: "",
 			want: want{
 				statusCode:  http.StatusBadRequest,
@@ -198,7 +210,7 @@ func TestDecode(t *testing.T) {
 		},
 		{
 			name:     "Already_Deleted_URL",
-			userID:   auth.EnsureRandom(),
+			userID:   jwtService.EnsureRandom(),
 			shortURL: thirdShort,
 			want: want{
 				statusCode:  http.StatusGone,
@@ -207,7 +219,7 @@ func TestDecode(t *testing.T) {
 		},
 		{
 			name:     "Error_Get_URL",
-			userID:   auth.EnsureRandom(),
+			userID:   jwtService.EnsureRandom(),
 			shortURL: fourthShort,
 			want: want{
 				statusCode:  http.StatusBadRequest,
@@ -215,13 +227,6 @@ func TestDecode(t *testing.T) {
 			},
 		},
 	}
-
-	mockCtrl := gomock.NewController(t)
-	mockStorageDB := mocks.NewMockStorage(mockCtrl)
-	defer mockCtrl.Finish()
-
-	storageURLs := storage.Storage{Storage: mockStorageDB}
-	handler := New(storageURLs, cfg)
 
 	mockStorageDB.EXPECT().Get(firstShort).Return(firstOriginalURL, nil).Times(1)
 	mockStorageDB.EXPECT().Get(secondShort).Return("", nil).Times(1)
@@ -265,6 +270,7 @@ func TestShorten(t *testing.T) {
 		ServerAddress: ":8080",
 		BaseURL:       "http://localhost:8080",
 	}
+	jwtService := auth.NewJwtService("verycomplexsecretkey")
 
 	var tests = []struct {
 		name        string
@@ -276,7 +282,7 @@ func TestShorten(t *testing.T) {
 		{
 			name:        "Valid_URL",
 			method:      http.MethodPost,
-			userID:      auth.EnsureRandom(),
+			userID:      jwtService.EnsureRandom(),
 			requestBody: `{"url": "https://ya.ru"}`,
 			want: want{
 				statusCode:  http.StatusCreated,
@@ -296,7 +302,7 @@ func TestShorten(t *testing.T) {
 		{
 			name:        "Bad_Request",
 			method:      http.MethodPost,
-			userID:      auth.EnsureRandom(),
+			userID:      jwtService.EnsureRandom(),
 			requestBody: `343434{"url": "https://ya.ru"}`,
 			want: want{
 				statusCode:  http.StatusInternalServerError,
@@ -306,7 +312,7 @@ func TestShorten(t *testing.T) {
 		{
 			name:        "Short_URL_Save_Conflict_Error",
 			method:      http.MethodPost,
-			userID:      auth.EnsureRandom(),
+			userID:      jwtService.EnsureRandom(),
 			requestBody: `{"url": "https://ya.ru"}`,
 			want: want{
 				statusCode:  http.StatusConflict,
@@ -316,7 +322,7 @@ func TestShorten(t *testing.T) {
 		{
 			name:        "Short_URL_Save_Other_Error",
 			method:      http.MethodPost,
-			userID:      auth.EnsureRandom(),
+			userID:      jwtService.EnsureRandom(),
 			requestBody: `{"url": "https://ya.ru"}`,
 			want: want{
 				statusCode:  http.StatusBadRequest,
@@ -330,7 +336,8 @@ func TestShorten(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	storageURLs := storage.Storage{Storage: mockStorageDB}
-	handler := New(storageURLs, cfg)
+	appService := shortener_service.NewShortenerService(&storageURLs, cfg)
+	handler := New(appService)
 
 	firstCall := mockStorageDB.EXPECT().Save(gomock.Any(), "https://ya.ru", "6YGS4ZUF", gomock.Any()).Return("6YGS4ZUF", nil)
 	secondCall := mockStorageDB.EXPECT().Save(gomock.Any(), "https://ya.ru", "6YGS4ZUF", gomock.Any()).After(firstCall).Return("", storage.NewURLConflictError("6YGS4ZUF", storage.ErrConflict))
@@ -377,6 +384,7 @@ func TestHandlers_SaveBatch(t *testing.T) {
 		ServerAddress: ":8080",
 		BaseURL:       "http://localhost:8080",
 	}
+	jwtService := auth.NewJwtService("verycomplexsecretkey")
 
 	var tests = []struct {
 		name        string
@@ -388,7 +396,7 @@ func TestHandlers_SaveBatch(t *testing.T) {
 		{
 			name:   "Valid_URL",
 			method: http.MethodPost,
-			userID: auth.EnsureRandom(),
+			userID: jwtService.EnsureRandom(),
 			requestBody: `[
 				{
 					"correlation_id": "ssdfdsfsfsd",
@@ -431,7 +439,7 @@ func TestHandlers_SaveBatch(t *testing.T) {
 		{
 			name:   "Bad_URL",
 			method: http.MethodPost,
-			userID: auth.EnsureRandom(),
+			userID: jwtService.EnsureRandom(),
 			requestBody: `[
 				{
 					"correlation_id": "ssdfdsfsfsd",
@@ -446,7 +454,7 @@ func TestHandlers_SaveBatch(t *testing.T) {
 		{
 			name:   "Error_URLs_Save",
 			method: http.MethodPost,
-			userID: auth.EnsureRandom(),
+			userID: jwtService.EnsureRandom(),
 			requestBody: `[
 				{
 					"correlation_id": "ssdfdsfsfsd",
@@ -482,7 +490,8 @@ func TestHandlers_SaveBatch(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	storageURLs := storage.Storage{Storage: mockStorageDB}
-	handler := New(storageURLs, cfg)
+	appService := shortener_service.NewShortenerService(&storageURLs, cfg)
+	handler := New(appService)
 
 	savedUrls := []string{"6YGS4ZUF", "x+5vpM8W"}
 	mockStorageDB.EXPECT().Get("https://ya.ru").Return("6YGS4ZUF", nil).Times(3)
@@ -527,10 +536,12 @@ func TestGzipCompression(t *testing.T) {
 		SecretKey:     "verycomplexsecretkey",
 	}
 	s := storage.Init(cfg.DatabaseDsn, cfg.FileStorage)
-	h := New(*s, cfg)
+	appService := shortener_service.NewShortenerService(s, cfg)
+	h := New(appService)
 	m := middlewares.Middleware{
-		Cfg: h.Cfg,
+		Cfg: cfg,
 	}
+	jwtService := auth.NewJwtService("verycomplexsecretkey")
 
 	handler := m.AuthMiddlewareSet(m.GzipMiddleware(h.Encode()))
 
@@ -555,8 +566,8 @@ func TestGzipCompression(t *testing.T) {
 		r.Header.Set("Content-Encoding", "gzip")
 		r.Header.Set("Accept-Encoding", "")
 
-		userID := auth.EnsureRandom()
-		token, _ := auth.CreateToken(&userID, cfg.SecretKey)
+		userID := jwtService.EnsureRandom()
+		token, _ := jwtService.CreateToken(&userID, cfg.SecretKey)
 
 		cookie := &http.Cookie{
 			Name:  "auth",
@@ -582,8 +593,8 @@ func TestGzipCompression(t *testing.T) {
 		r.RequestURI = ""
 		r.Header.Set("Accept-Encoding", "gzip")
 
-		userID := auth.EnsureRandom()
-		token, _ := auth.CreateToken(&userID, cfg.SecretKey)
+		userID := jwtService.EnsureRandom()
+		token, _ := jwtService.CreateToken(&userID, cfg.SecretKey)
 
 		cookie := &http.Cookie{
 			Name:  "auth",
@@ -608,7 +619,19 @@ func TestGzipCompression(t *testing.T) {
 	})
 }
 func BenchmarkHandlers_ShortURL(b *testing.B) {
+	cfg := &config.ConfigENV{
+		ServerAddress: ":8080",
+		BaseURL:       "http://localhost:8080",
+	}
+
+	mockCtrl := gomock.NewController(b)
+	mockStorageDB := mocks.NewMockStorage(mockCtrl)
+	defer mockCtrl.Finish()
+
+	storageURLs := storage.Storage{Storage: mockStorageDB}
+	appService := shortener_service.NewShortenerService(&storageURLs, cfg)
+
 	for i := 0; i < b.N; i++ {
-		ShortURL("https://ya.ru")
+		appService.ShortURL("https://ya.ru")
 	}
 }
