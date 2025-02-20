@@ -34,7 +34,7 @@ import (
 // ConfigENV env configuration params
 type ConfigENV struct {
 	ServerAddress     string `env:"SERVER_ADDRESS" json:"server_address,omitempty"`
-	GRPCServerAddress string `env:"GRPC_SERVER_ADDRESS" json:"server_address,omitempty"`
+	GRPCServerAddress string `env:"GRPC_SERVER_ADDRESS" json:"grpc_server_address,omitempty"`
 	BaseURL           string `env:"BASE_URL" json:"base_url,omitempty"`
 	LogLevel          string `env:"LOG_LEVEL"`
 	FileStorage       string `env:"FILE_STORAGE_PATH" json:"file_storage_path,omitempty"`

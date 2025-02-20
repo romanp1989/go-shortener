@@ -8,7 +8,7 @@ import (
 	"github.com/romanp1989/go-shortener/internal/auth"
 	"github.com/romanp1989/go-shortener/internal/logger"
 	"github.com/romanp1989/go-shortener/internal/models"
-	shortener_service "github.com/romanp1989/go-shortener/internal/shortener-service"
+	"github.com/romanp1989/go-shortener/internal/shortener-service"
 	"github.com/romanp1989/go-shortener/internal/storage"
 	"go.uber.org/zap"
 	"io"
@@ -19,11 +19,11 @@ import (
 
 // Handlers handlers
 type Handlers struct {
-	appService *shortener_service.ShortenerService
+	appService *shortenerservice.ShortenerService
 }
 
 // New Factory for create handlers
-func New(appService *shortener_service.ShortenerService) Handlers {
+func New(appService *shortenerservice.ShortenerService) Handlers {
 	return Handlers{
 		appService: appService,
 	}

@@ -122,6 +122,9 @@ func (gh *GRPCHandlers) SaveBatch(ctx context.Context, req *shortener.RequestSav
 		}
 
 		shortURL, err = gh.appService.Shorten(ctx, value.GetUrl(), userID)
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 
 		response.Items = append(response.Items, &shortener.Item{
 			CorrelationId: value.GetCorrelationId(),
