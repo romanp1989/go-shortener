@@ -6,6 +6,7 @@ import (
 	"github.com/romanp1989/go-shortener/internal/auth"
 	"github.com/romanp1989/go-shortener/internal/config"
 	"github.com/romanp1989/go-shortener/internal/middlewares"
+	shortener_service "github.com/romanp1989/go-shortener/internal/shortener-service"
 	"github.com/romanp1989/go-shortener/internal/storage"
 	"io"
 	"log"
@@ -22,7 +23,8 @@ func Example_handlers_Shorten() {
 		BaseURL:       "http://localhost:8080",
 	}
 
-	handlers := New(*store, cfg)
+	appService := shortener_service.NewShortenerService(store, cfg)
+	handlers := New(appService)
 
 	router := chi.NewRouter()
 
@@ -30,7 +32,7 @@ func Example_handlers_Shorten() {
 	defer srv.Close()
 
 	m := middlewares.Middleware{
-		Cfg: handlers.Cfg,
+		Cfg: cfg,
 	}
 
 	router.Use(m.GzipMiddleware)
@@ -52,7 +54,8 @@ func requestExample(server *httptest.Server, method string, path string, request
 	body := strings.NewReader(requestBody)
 	r := httptest.NewRequest(method, path, body)
 
-	userID := auth.EnsureRandom()
+	jwtService := auth.NewJwtService("verycomplexsecretkey")
+	userID := jwtService.EnsureRandom()
 
 	rctx := context.WithValue(r.Context(), auth.AuthKey, userID)
 	r = r.WithContext(rctx)

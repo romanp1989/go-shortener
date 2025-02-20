@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/romanp1989/go-shortener/internal/app"
 	"html/template"
+	"log"
 	"os"
 )
 
@@ -29,7 +30,15 @@ Build commit: {{if .BuildCommit}} {{.BuildCommit}} {{else}} N/A {{end}}
 // main Main function for launch application
 func main() {
 	printBuildInfo()
-	app.RunServer()
+
+	cfg, err := app.ReadConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go app.RunGRPCServer(cfg)
+	app.RunServer(cfg)
+
 }
 
 func printBuildInfo() {

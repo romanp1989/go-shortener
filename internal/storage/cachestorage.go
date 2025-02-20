@@ -50,3 +50,7 @@ func (s *CacheStorage) GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) 
 func (s *CacheStorage) Ping(ctx context.Context) error {
 	return nil
 }
+
+func (s *CacheStorage) GetStats(ctx context.Context) (models.StorageStats, error) {
+	return models.StorageStats{}, nil
+}

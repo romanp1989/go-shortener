@@ -31,7 +31,8 @@ func TestDBStorage_Save(t *testing.T) {
 		userID      *uuid.UUID
 	}
 
-	userID := auth.EnsureRandom()
+	jwtService := auth.NewJwtService("verycomplexsecretkey")
+	userID := jwtService.EnsureRandom()
 
 	mock.ExpectQuery("INSERT INTO urls").
 		WithArgs("6YGS4ZUF", "https://ya.ru", userID).
@@ -147,7 +148,8 @@ func TestDBStorage_SaveBatch(t *testing.T) {
 		inputURLs []models.StorageURL
 	}
 
-	userID := auth.EnsureRandom()
+	jwtService := auth.NewJwtService("verycomplexsecretkey")
+	userID := jwtService.EnsureRandom()
 
 	mock.ExpectBegin()
 	mock.ExpectQuery("INSERT INTO urls").
@@ -206,7 +208,8 @@ func TestDBStorage_DeleteBatch(t *testing.T) {
 		inputURLs []string
 	}
 
-	userID := auth.EnsureRandom()
+	jwtService := auth.NewJwtService("verycomplexsecretkey")
+	userID := jwtService.EnsureRandom()
 
 	urlList := new(pgtype.VarcharArray)
 

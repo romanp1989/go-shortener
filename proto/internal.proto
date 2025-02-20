@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/romanp1989/go-shortener/internal/grpc/proto";
+
+import "proto/shortener/request.proto";
+import "proto/shortener/response.proto";
+import "google/protobuf/empty.proto";
+
+service Internal {
+
+  rpc Encode (shortener.RequestEncode) returns (shortener.ResponseEncode) {};
+  rpc Decode(shortener.RequestDecode) returns (shortener.ResponseDecode) {};
+  rpc Shorten(shortener.RequestShorten) returns (shortener.ResponseShorten) {};
+  rpc SaveBatch (shortener.RequestSaveBatch) returns (shortener.ResponseSaveBatch) {};
+  rpc GetUserURL (google.protobuf.Empty) returns (shortener.ResponseGetUserURL) {};
+  rpc DeleteURLs (shortener.RequestDeleteURLs) returns (google.protobuf.Empty) {};
+  rpc GetStats (google.protobuf.Empty) returns (shortener.ResponseGetStats) {};
+  rpc PingDB (google.protobuf.Empty) returns (google.protobuf.Empty) {};
+}

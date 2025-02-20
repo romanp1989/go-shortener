@@ -166,3 +166,7 @@ func (s *FileStorage) GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) (
 func (s *FileStorage) Ping(ctx context.Context) error {
 	return nil
 }
+
+func (s *FileStorage) GetStats(ctx context.Context) (models.StorageStats, error) {
+	return models.StorageStats{}, nil
+}

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/romanp1989/go-shortener/internal/config"
 	"github.com/stretchr/testify/require"
 	"syscall"
 	"testing"
@@ -24,7 +25,11 @@ func TestRunServer(t *testing.T) {
 				_ = syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 			}()
 
-			err := RunServer()
+			cfg := &config.ConfigENV{
+				ServerAddress: "http://localhost:8080",
+				BaseURL:       "http://localhost:8080",
+			}
+			err := RunServer(cfg)
 			require.NoError(t, err)
 		})
 	}
