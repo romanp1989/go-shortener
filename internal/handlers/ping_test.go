@@ -5,6 +5,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/romanp1989/go-shortener/internal/config"
 	"github.com/romanp1989/go-shortener/internal/models/mocks"
+	shortener_service "github.com/romanp1989/go-shortener/internal/shortener-service"
 	"github.com/romanp1989/go-shortener/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -44,7 +45,8 @@ func TestHandlers_PingDB(t *testing.T) {
 
 	storageURLs := storage.Storage{Storage: mockStorageDB}
 	cfg, _ := config.ParseFlags()
-	handler := New(storageURLs, cfg)
+	appService := shortener_service.NewShortenerService(&storageURLs, cfg)
+	handler := New(appService)
 
 	firstCall := mockStorageDB.EXPECT().Ping(gomock.Any()).Return(nil).Times(1)
 	mockStorageDB.EXPECT().Ping(gomock.Any()).After(firstCall).Return(errors.New("error database connect ping"))

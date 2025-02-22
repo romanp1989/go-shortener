@@ -60,3 +60,8 @@ func (s *Storage) DeleteUrlsBatch(ctx context.Context, userID *uuid.UUID, urls [
 func (s *Storage) Ping(ctx context.Context) error {
 	return s.Storage.Ping(ctx)
 }
+
+// Ping function for ping storage connection
+func (s *Storage) GetStats(ctx context.Context) (models.StorageStats, error) {
+	return s.Storage.GetStats(ctx)
+}

@@ -8,6 +8,7 @@ import (
 	"github.com/romanp1989/go-shortener/internal/config"
 	"github.com/romanp1989/go-shortener/internal/logger"
 	"go.uber.org/zap"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -15,7 +16,8 @@ import (
 
 // Middleware middleware struct
 type Middleware struct {
-	Cfg *config.ConfigENV
+	Cfg        *config.ConfigENV
+	JwtService *auth.JWTService
 }
 
 // GzipMiddleware Middleware for archiving the hanlders response
@@ -101,12 +103,12 @@ func (m Middleware) AuthMiddlewareSet(h http.Handler) http.Handler {
 		}
 
 		if cookie == nil {
-			userID := auth.EnsureRandom()
+			userID := m.JwtService.EnsureRandom()
 			uid = &userID
 
-			auth.NewCookie(w, uid, m.Cfg.SecretKey)
+			m.newCookie(w, uid, m.Cfg.SecretKey)
 		} else if cookie.Value != "" {
-			uid, _ = auth.GetUserID(cookie.Value, m.Cfg.SecretKey)
+			uid, _ = m.JwtService.GetUserID(cookie.Value)
 		}
 
 		if uid == nil {
@@ -134,12 +136,12 @@ func (m Middleware) AuthMiddlewareRead(h http.Handler) http.Handler {
 		}
 
 		if cookie == nil {
-			userID := auth.EnsureRandom()
+			userID := m.JwtService.EnsureRandom()
 			uid = &userID
 
-			auth.NewCookie(w, uid, m.Cfg.SecretKey)
+			m.newCookie(w, uid, m.Cfg.SecretKey)
 		} else if cookie.Value != "" {
-			uid, _ = auth.GetUserID(cookie.Value, m.Cfg.SecretKey)
+			uid, _ = m.JwtService.GetUserID(cookie.Value)
 		}
 
 		if uid == nil {
@@ -152,4 +154,56 @@ func (m Middleware) AuthMiddlewareRead(h http.Handler) http.Handler {
 
 		h.ServeHTTP(w, r)
 	})
+}
+
+// ValidateSubnet validate user ip for internal access
+func (m Middleware) ValidateSubnet(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var trustedSubnets string
+		var ipNet *net.IPNet
+		var err error
+
+		trustedSubnets = m.Cfg.TrustedSubnet
+		if trustedSubnets != "" {
+			_, ipNet, err = net.ParseCIDR(trustedSubnets)
+			if err != nil {
+				logger.Log.Error("Parse error trusted subnet config: %v", zap.String("error", err.Error()))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
+
+		clientIPHeader := r.Header.Get("X-Real-IP")
+		ip := net.ParseIP(clientIPHeader)
+
+		if ip == nil {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		if !ipNet.Contains(ip) {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		h.ServeHTTP(w, r)
+	})
+}
+
+// NewCookie Function add new authorization cookie
+func (m Middleware) newCookie(w http.ResponseWriter, userID *uuid.UUID, secretKey string) {
+
+	token, err := m.JwtService.CreateToken(userID, secretKey)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	cookie := &http.Cookie{
+		Name:  "auth",
+		Value: token,
+		Path:  "/",
+	}
+
+	http.SetCookie(w, cookie)
 }

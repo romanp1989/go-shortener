@@ -4,12 +4,19 @@ import (
 	"context"
 	"crypto/tls"
 	"github.com/go-chi/chi/v5"
+	"github.com/romanp1989/go-shortener/internal/auth"
 	"github.com/romanp1989/go-shortener/internal/config"
+	grpcHandlers "github.com/romanp1989/go-shortener/internal/grpc/handlers"
+	"github.com/romanp1989/go-shortener/internal/grpc/interceptors"
+	"github.com/romanp1989/go-shortener/internal/grpc/proto"
 	"github.com/romanp1989/go-shortener/internal/handlers"
 	"github.com/romanp1989/go-shortener/internal/logger"
 	"github.com/romanp1989/go-shortener/internal/route"
+	shortener_service "github.com/romanp1989/go-shortener/internal/shortener-service"
 	"github.com/romanp1989/go-shortener/internal/storage"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -24,12 +31,8 @@ type App struct {
 }
 
 // RunServer run application server
-func RunServer() error {
-	cfg, err := config.ParseFlags()
-	if err != nil {
-		logger.Log.Info(err.Error())
-		return err
-	}
+func RunServer(cfg *config.ConfigENV) error {
+	var err error
 
 	errChan := make(chan error, 1)
 
@@ -42,15 +45,12 @@ func RunServer() error {
 
 	s := storage.Init(cfg.DatabaseDsn, cfg.FileStorage)
 
-	h := handlers.New(*s, cfg)
+	appService := shortener_service.NewShortenerService(s, cfg)
+	jwtService := auth.NewJwtService(cfg.SecretKey)
 
-	deleteHandler, err := handlers.NewDelete(s)
-	if err != nil {
-		logger.Log.Info(err.Error())
-		return err
-	}
+	h := handlers.New(appService)
 
-	r := route.New(h, deleteHandler)
+	r := route.New(appService, h, jwtService)
 
 	srv := &http.Server{
 		Addr:    cfg.ServerAddress,
@@ -98,5 +98,43 @@ func RunServer() error {
 		}
 
 	}
+}
 
+func RunGRPCServer(cfg *config.ConfigENV) error {
+	var err error
+
+	s := storage.Init(cfg.DatabaseDsn, cfg.FileStorage)
+	jwtService := auth.NewJwtService(cfg.SecretKey)
+
+	appService := shortener_service.NewShortenerService(s, cfg)
+	h := grpcHandlers.New(appService)
+	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor([]grpc.UnaryServerInterceptor{
+		interceptors.AuthInterceptor(jwtService),
+		interceptors.IPRestrictionInterceptor(cfg.TrustedSubnet),
+	}...))
+	proto.RegisterInternalServer(grpcServer, h)
+
+	listener, err := net.Listen("tcp", cfg.GRPCServerAddress)
+	if err != nil {
+		logger.Log.Fatal("Failed to start gRPC server", zap.Error(err))
+		return err
+	}
+	logger.Log.Info("Starting gRPC server", zap.String("address", cfg.GRPCServerAddress))
+
+	if err := grpcServer.Serve(listener); err != nil {
+		logger.Log.Fatal("gRPC server encountered an error", zap.Error(err))
+		return err
+	}
+
+	return nil
+}
+
+func ReadConfig() (*config.ConfigENV, error) {
+	cfg, err := config.ParseFlags()
+	if err != nil {
+		logger.Log.Info(err.Error())
+		return nil, err
+	}
+
+	return cfg, err
 }

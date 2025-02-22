@@ -30,6 +30,7 @@ type Storage interface {
 	Ping(ctx context.Context) error
 	GetAllUrlsByUser(ctx context.Context, userID *uuid.UUID) ([]StorageURL, error)
 	DeleteBatch(ctx context.Context, userID *uuid.UUID, urls []string) error
+	GetStats(ctx context.Context) (StorageStats, error)
 }
 
 // BatchShortenRequest structure for batch save URLs handler request
@@ -42,4 +43,9 @@ type BatchShortenRequest struct {
 type BatchShortenResponse struct {
 	CorrelationID string `json:"correlation_id"`
 	ShortURL      string `json:"short_url"`
+}
+
+type StorageStats struct {
+	Users int64 `json:"users"`
+	URLs  int64 `json:"urls"`
 }

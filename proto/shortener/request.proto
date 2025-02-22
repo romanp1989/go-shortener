@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package proto.shortener;
+
+option go_package = "github.com/romanp1989/go-shortener/internal/grpc/proto/shortener";
+
+import "proto/shortener/entity.proto";
+
+message RequestEncode {
+  string url = 1;
+}
+
+message RequestDecode {
+  string url = 1;
+}
+
+message RequestShorten {
+  string url = 1;
+}
+
+message RequestSaveBatch {
+  repeated Item items = 1;
+}
+
+message RequestDeleteURLs {
+  repeated string short_urls = 1;
+}
+
